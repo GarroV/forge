@@ -10,7 +10,7 @@ grep -q "forge_home: $FORGE_HOME" "$HOME/.claude/forge/profile.md" || { echo "FA
 echo "custom-marker" >> "$HOME/.claude/forge/profile.md"
 "$FORGE_HOME/install.sh" > /dev/null
 grep -q "custom-marker" "$HOME/.claude/forge/profile.md" || { echo "FAIL: profile overwritten"; exit 1; }
-[[ ! -e "$HOME/.claude/skills/forge-*" ]] || { echo "FAIL: literal glob symlink created"; exit 1; }
+[[ ! -L "$HOME/.claude/skills/forge-*" ]] || { echo "FAIL: literal glob symlink created"; exit 1; }
 for s in "$FORGE_HOME"/skills/forge-*/; do
   name="$(basename "$s")"
   [[ "$(readlink "$HOME/.claude/skills/$name")" == "${s%/}" ]] || { echo "FAIL: symlink $name"; exit 1; }
