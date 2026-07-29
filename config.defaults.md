@@ -11,7 +11,7 @@ models:
   executor: sonnet
 converge_limit: 3
 test_platform: local
-telegram: off
+telegram: "off"
 question_batching: true
 ---
 # Конфиг Forge (дефолты)
