@@ -15,4 +15,17 @@ for s in "$FORGE_HOME"/skills/forge-*/; do
   name="$(basename "$s")"
   [[ "$(readlink "$HOME/.claude/skills/$name")" == "${s%/}" ]] || { echo "FAIL: symlink $name"; exit 1; }
 done
+# Определения агентов ставятся тем же установщиком: без них скиллы называют типы
+# агентов, которых в реестре нет, и запуск блока падает «agent type not found».
+[[ ! -L "$HOME/.claude/agents/forge-*.md" ]] || { echo "FAIL: literal glob symlink created (agents)"; exit 1; }
+agents_found=0
+for a in "$FORGE_HOME"/agents/forge-*.md; do
+  name="$(basename "$a")"
+  [[ "$(readlink "$HOME/.claude/agents/$name")" == "$a" ]] || { echo "FAIL: agent symlink $name"; exit 1; }
+  agents_found=1
+done
+(( agents_found == 1 )) || { echo "FAIL: no agent definitions linked"; exit 1; }
+# Предупреждение о перезапуске — часть установки, а не любезность: реестр агентов
+# Claude Code собирает на старте сессии, в уже открытой новые определения не видны.
+"$FORGE_HOME/install.sh" | grep -q "перезапусти" || { echo "FAIL: no restart warning"; exit 1; }
 echo "PASS"

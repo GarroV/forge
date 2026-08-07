@@ -44,7 +44,7 @@ for dir in "$SKILLS_DIR"/*/; do
     else
       [[ -e "$target" ]] || fail "[$name] ссылается на несуществующий файл: $ref"
     fi
-  done < <(grep -ohE '\b(templates|test)/[A-Za-z0-9_./-]*' "$skill" | sed 's/\.$//' | sort -u)
+  done < <(grep -ohE '\b(templates|test|agents)/[A-Za-z0-9_./-]*' "$skill" | sed 's/\.$//' | sort -u)
 
   echo "PASS: $name"
 done
@@ -59,7 +59,7 @@ done
 # личные пути живут в профиле пользователя.
 # channel/ тоже ядро: он разворачивается у любого, кто поставит систему, поэтому
 # ни чужих адресов репозиториев, ни абсолютных домашних путей в нём быть не должно.
-for scope in "$SKILLS_DIR" "$FORGE_HOME/templates" "$FORGE_HOME/channel"; do
+for scope in "$SKILLS_DIR" "$FORGE_HOME/templates" "$FORGE_HOME/channel" "$FORGE_HOME/agents"; do
   [[ -d "$scope" ]] || continue
 
   hardcoded_repo="$(grep -rnE -- '--repo[= ]+[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+' "$scope" || true)"
