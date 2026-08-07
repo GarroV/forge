@@ -25,7 +25,11 @@ for a in "$FORGE_HOME"/agents/forge-*.md; do
   agents_found=1
 done
 (( agents_found == 1 )) || { echo "FAIL: no agent definitions linked"; exit 1; }
-# Предупреждение о перезапуске — часть установки, а не любезность: реестр агентов
-# Claude Code собирает на старте сессии, в уже открытой новые определения не видны.
-"$FORGE_HOME/install.sh" | grep -q "перезапусти" || { echo "FAIL: no restart warning"; exit 1; }
+# Предупреждение — часть установки, а не любезность: в уже открытой сессии реестр
+# агентов обновляется с задержкой, и первый запуск после установки может упасть
+# «agent type not found». Проверяются оба совета, потому что порознь они врут:
+# только «повтори» оставит человека в цикле, только «перезапусти» погонит его зря.
+install_out="$("$FORGE_HOME/install.sh")"
+grep -q "задержкой" <<<"$install_out" || { echo "FAIL: no delay warning"; exit 1; }
+grep -q "перезапусти" <<<"$install_out" || { echo "FAIL: no restart fallback"; exit 1; }
 echo "PASS"
