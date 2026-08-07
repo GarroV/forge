@@ -1,0 +1,51 @@
+# Канал Forge: Postgres (очередь ответов + журнал отправленного) и бот, который
+# владеет токеном единолично.
+#
+# По конвенции MUSPELHEIM (см. muspelheim-infra/_template): имя compose-проекта =
+# имя папки, у каждого проекта свой Postgres и свой volume, стеки друг о друге не
+# знают. Разворачивать как C:\projects\forge-channel.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?задай в .env}
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-app}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    labels:
+      # По этой метке ежедневный бэкап сервера (C:\backups\pg_backup.ps1) находит
+      # базу. Без метки очередь ответов не попадёт в бэкап.
+      - "backup.pgdump=true"
+    # Наружу порт БД не публикуем: к ней ходит только бот по внутренней сети.
+
+  bot:
+    build: ./bot
+    restart: unless-stopped
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN:?задай в .env}
+      FORGE_SECRET: ${FORGE_SECRET:?задай в .env}
+      OWNER_CHAT_ID: ${OWNER_CHAT_ID:?задай в .env}
+      API_PORT: 8090
+      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-app}
+    ports:
+      # Порт наружу — сюда стучится Claude Code с Mac по Tailscale.
+      # ВАЖНО: Docker Desktop при старте вешает inbound-BLOCK на свой backend, и
+      # порт перестаёт отвечать с других хостов (локально при этом работает —
+      # это путает диагностику). Лечение — keep-port-open.ps1 рядом, поставленный
+      # задачей планировщика. Без него канал будет выглядеть мёртвым с Mac.
+      - "${API_HOST_PORT:-8090}:8090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

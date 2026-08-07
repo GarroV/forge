@@ -1,2 +1,6 @@
 .superpowers/
 .DS_Store
+
+# Секреты канала: только на сервере, в git — лишь .env.example
+channel/.env
+channel/keep-port-open.log
