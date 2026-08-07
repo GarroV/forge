@@ -24,6 +24,7 @@ import sys
 from typing import Optional
 
 from aiogram import Bot, Dispatcher, types
+from aiogram.exceptions import TelegramConflictError
 from aiohttp import web
 
 import db
@@ -123,19 +124,85 @@ async def handle_ack(request: web.Request) -> web.Response:
     return web.json_response({"ok": True, "acked": touched})
 
 
+class PollingState:
+    """Факт опроса Telegram, а не намерение его начать.
+
+    Существует из-за конкретного случая: первая версия выставляла флаг `polling`
+    один раз при старте и больше не трогала. Канал двенадцать минут не получал
+    сообщений (его выбил второй слушатель), а проверка живости всё это время
+    отвечала `ok`. Проверка, которая не падает, когда сломано, — хуже
+    отсутствующей: по ней принимают решение «всё в порядке».
+
+    Поэтому здесь хранится время **последней удачной выборки** и число подряд
+    идущих конфликтов, а не «я запустился».
+    """
+
+    #: Сколько ждать очередной удачной выборки, прежде чем счесть опрос мёртвым.
+    #: Длиннее таймаута самого опроса — иначе будем ругаться на нормальное
+    #: ожидание, когда владелец просто ничего не пишет.
+    STALE_AFTER = 90.0
+
+    def __init__(self) -> None:
+        self.started = False
+        self.last_ok: Optional[float] = None
+        self.conflicts = 0
+        self.last_error: Optional[str] = None
+
+    def mark_ok(self) -> bool:
+        """Удачная выборка. Возвращает True, если это выход из конфликта."""
+        recovered = self.conflicts > 0
+        self.started = True
+        self.last_ok = asyncio.get_running_loop().time()
+        self.conflicts = 0
+        self.last_error = None
+        return recovered
+
+    def mark_conflict(self, message: str) -> bool:
+        """Конфликт. Возвращает True только на первом — чтобы не спамить."""
+        self.conflicts += 1
+        self.last_error = message
+        return self.conflicts == 1
+
+    def mark_error(self, message: str) -> None:
+        self.last_error = message
+
+    def age(self) -> Optional[float]:
+        if self.last_ok is None:
+            return None
+        return asyncio.get_running_loop().time() - self.last_ok
+
+    def healthy(self) -> bool:
+        age = self.age()
+        return self.started and self.conflicts == 0 and age is not None and age <= self.STALE_AFTER
+
+
 async def handle_health(request: web.Request) -> web.Response:
     """Состояние канала.
 
     Секрет здесь не требуется намеренно: это проверка живости, её дёргают
-    автоматикой, и она не отдаёт ничего чувствительного. Но и врать не должна —
-    статус `ok` только когда база действительно ответила.
+    автоматикой, и она не отдаёт ничего чувствительного. Но и врать не должна:
+    `ok` — только когда база ответила **и** опрос действительно живой.
     """
+    state: PollingState = request.app["polling"]
     alive = await db.db_alive(request.app["pool"])
+    age = state.age()
+
+    if not alive:
+        status = "db down"
+    elif not state.healthy():
+        status = "polling down"
+    else:
+        status = "ok"
+
     payload = {
-        "status": "ok" if alive else "db down",
-        "polling": request.app.get("polling_ok", False),
+        "status": status,
+        "polling": state.healthy(),
+        # Факты, по которым видно, ПОЧЕМУ статус такой:
+        "last_update_fetch_sec_ago": None if age is None else round(age, 1),
+        "conflicts_in_a_row": state.conflicts,
+        "last_error": state.last_error,
     }
-    return web.json_response(payload, status=200 if alive else 503)
+    return web.json_response(payload, status=200 if status == "ok" else 503)
 
 
 # ─── Приём ответов владельца из Telegram ──────────────────────────────────────
@@ -168,6 +235,86 @@ def build_dispatcher(pool, owner: str) -> Dispatcher:
     return dp
 
 
+# ─── Опрос Telegram ───────────────────────────────────────────────────────────
+
+
+async def poll_updates(bot: Bot, dp: Dispatcher, state: PollingState, owner: str) -> None:
+    """Свой цикл опроса вместо `dp.start_polling`.
+
+    Причина не в недоверии к aiogram: его цикл сам переживает конфликты и
+    ретраит, но наружу об этом не сообщает — узнать «получаю ли я сообщения
+    прямо сейчас» из него нельзя. А это ровно тот факт, из-за незнания которого
+    канал двенадцать минут выглядел здоровым, будучи выбитым.
+
+    Здесь каждая итерация явно отмечается в состоянии, а на конфликт канал
+    **сам пишет владельцу**: отправка при конфликте работает, поэтому жаловаться
+    он может, даже когда не может слушать.
+    """
+    offset: Optional[int] = None
+
+    while True:
+        try:
+            updates = await bot.get_updates(
+                offset=offset,
+                timeout=25,
+                # Нас интересуют только сообщения: реакции, редактирования и
+                # прочее только заняли бы очередь.
+                allowed_updates=["message"],
+            )
+        except TelegramConflictError as error:
+            first = state.mark_conflict(str(error))
+            log.error("канал выбит: %s", error)
+            if first:
+                # Один раз на серию, а не на каждую попытку: канал должен
+                # предупредить, а не завалить владельца одинаковыми алертами.
+                await notify_owner(
+                    bot,
+                    owner,
+                    "alert",
+                    "channel",
+                    "Меня выбил другой слушатель бота — приём ответов не работает.\n\n"
+                    "Скорее всего где-то запущен плагин Telegram в сессии Claude Code: "
+                    "Telegram допускает одного слушателя на токен. Отправка при этом "
+                    "работает, поэтому это сообщение и дошло.",
+                )
+            await asyncio.sleep(5)
+            continue
+        except Exception as error:  # сеть, таймаут, пятисотка Telegram
+            state.mark_error(str(error))
+            log.warning("выборка обновлений не удалась: %s", error)
+            await asyncio.sleep(3)
+            continue
+
+        if state.mark_ok():
+            log.info("опрос восстановлен")
+            await notify_owner(
+                bot, owner, "block", "channel",
+                "Приём ответов восстановился — снова слушаю бота.",
+            )
+
+        for update in updates:
+            offset = update.update_id + 1
+            try:
+                await dp.feed_update(bot, update)
+            except Exception:
+                # Падение обработчика не должно останавливать опрос: иначе одно
+                # негодное сообщение выключает канал целиком.
+                log.exception("обработка обновления %s не удалась", update.update_id)
+
+
+async def notify_owner(bot: Bot, owner: str, kind: str, project: str, text: str) -> None:
+    """Отправка владельцу изнутри канала (алерты о самом канале).
+
+    Обычные сообщения приходят из системы через `POST /notify`; этой дорогой
+    канал говорит только о себе — что его выбили или что он вернулся.
+    """
+    try:
+        for part in chunk_text(outbound_text(kind, project, text)):
+            await bot.send_message(chat_id=owner, text=part)
+    except Exception:
+        log.exception("не удалось отправить алерт владельцу")
+
+
 # ─── Точка входа ──────────────────────────────────────────────────────────────
 
 
@@ -177,12 +324,17 @@ async def main() -> None:
     bot = Bot(token=env["token"])
     dp = build_dispatcher(pool, env["owner"])
 
+    state = PollingState()
+
     app = web.Application()
     app["secret"] = env["secret"]
     app["owner"] = env["owner"]
     app["pool"] = pool
     app["bot"] = bot
-    app["polling_ok"] = False
+    # Состояние опроса — отдельный объект, а не запись в приложении: aiohttp
+    # ругается на изменение состояния уже запущенного приложения, и это
+    # справедливо. Объект можно менять сколько угодно, приложение — нет.
+    app["polling"] = state
     app.add_routes(
         [
             web.post("/notify", handle_notify),
@@ -200,15 +352,8 @@ async def main() -> None:
     await site.start()
     log.info("HTTP-интерфейс слушает порт %s", env["port"])
 
-    async def polling() -> None:
-        app["polling_ok"] = True
-        try:
-            await dp.start_polling(bot)
-        finally:
-            app["polling_ok"] = False
-
     try:
-        await polling()
+        await poll_updates(bot, dp, state, env["owner"])
     finally:
         await runner.cleanup()
         await bot.session.close()
