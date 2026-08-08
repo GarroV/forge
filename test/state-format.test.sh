@@ -86,6 +86,23 @@ check_fixture() {
     done
   done < <(grep -E '^\| *T[0-9]{3} *\|' "$TASKS" || true)
 
+  # Проверка 5: у каждого блока, который уже работал (есть задача в статусе
+  # in_progress/done/failed), в progress.md есть запись о запуске с ролью и
+  # моделью. Без неё не видно, какой ролью и какой моделью шла работа: именно так
+  # роль исполнителя не запускалась две стройки подряд и никто этого не замечал.
+  local worked_blocks block
+  worked_blocks="$(grep -E '^\| *T[0-9]{3} *\|' "$TASKS" \
+    | awk -F'|' '{gsub(/^ +| +$/,"",$3); gsub(/^ +| +$/,"",$5);
+                  if ($3 != "chores" && ($5 == "in_progress" || $5 == "done" || $5 == "failed")) print $3}' \
+    | sort -u)"
+  while IFS= read -r block; do
+    [[ -z "$block" ]] && continue
+    if ! grep -qE "Запущен блок ${block}: роль [A-Za-z0-9_-]+, модель [^ ,]+" "$PROGRESS"; then
+      echo "FAIL: [$FIXTURE] progress.md: нет записи о запуске блока $block с ролью и моделью"
+      exit 1
+    fi
+  done <<< "$worked_blocks"
+
   echo "PASS: $FIXTURE"
 }
 
