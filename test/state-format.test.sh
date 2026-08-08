@@ -90,18 +90,39 @@ check_fixture() {
   # in_progress/done/failed), в progress.md есть запись о запуске с ролью и
   # моделью. Без неё не видно, какой ролью и какой моделью шла работа: именно так
   # роль исполнителя не запускалась две стройки подряд и никто этого не замечал.
-  local worked_blocks block
-  worked_blocks="$(grep -E '^\| *T[0-9]{3} *\|' "$TASKS" \
-    | awk -F'|' '{gsub(/^ +| +$/,"",$3); gsub(/^ +| +$/,"",$5);
-                  if ($3 != "chores" && ($5 == "in_progress" || $5 == "done" || $5 == "failed")) print $3}' \
-    | sort -u)"
-  while IFS= read -r block; do
-    [[ -z "$block" ]] && continue
-    if ! grep -qE "Запущен блок ${block}: роль [A-Za-z0-9_-]+, модель [^ ,]+" "$PROGRESS"; then
-      echo "FAIL: [$FIXTURE] progress.md: нет записи о запуске блока $block с ролью и моделью"
-      exit 1
-    fi
-  done <<< "$worked_blocks"
+  #
+  # Требование не задним числом: оно действует с той строки журнала, где стоит
+  # маркер формата. Журнал без маркера велся до появления правила — блоки в нём
+  # проверять не по чему, и валить из-за этого работающую стройку нельзя (красная
+  # проверка по контракту скилла означает «стоп»). Пропуск не молчаливый: о нём
+  # печатается строка.
+  local marker_line
+  # `|| true` обязателен: без совпадения grep возвращает 1, а под `set -e` с
+  # `pipefail` это убивает весь прогон молча — с пустым выводом и кодом 1.
+  marker_line="$(grep -nF 'Формат журнала: с этой строки каждый запуск агента записывается с ролью и моделью' "$PROGRESS" | head -1 | cut -d: -f1 || true)"
+
+  if [[ -z "$marker_line" ]]; then
+    echo "NOTE: [$FIXTURE] в progress.md нет маркера формата — записи о запуске не проверяются (журнал до правила)"
+  else
+    local worked_blocks block first_mention
+    worked_blocks="$(grep -E '^\| *T[0-9]{3} *\|' "$TASKS" \
+      | awk -F'|' '{gsub(/^ +| +$/,"",$3); gsub(/^ +| +$/,"",$5);
+                    if ($3 != "chores" && ($5 == "in_progress" || $5 == "done" || $5 == "failed")) print $3}' \
+      | sort -u)"
+    while IFS= read -r block; do
+      [[ -z "$block" ]] && continue
+      # Блок, начатый до маркера, под правило не попадает: его запуска в журнале
+      # быть не могло.
+      first_mention="$(grep -nF "$block" "$PROGRESS" | head -1 | cut -d: -f1 || true)"
+      if [[ -n "$first_mention" && "$first_mention" -lt "$marker_line" ]]; then
+        continue
+      fi
+      if ! grep -qE "Запущен блок ${block}: роль [A-Za-z0-9_-]+, модель [^ ,]+" "$PROGRESS"; then
+        echo "FAIL: [$FIXTURE] progress.md: нет записи о запуске блока $block с ролью и моделью"
+        exit 1
+      fi
+    done <<< "$worked_blocks"
+  fi
 
   echo "PASS: $FIXTURE"
 }
