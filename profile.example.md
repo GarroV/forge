@@ -2,7 +2,8 @@
 # Личный профиль Forge. Копируется install.sh в ~/.claude/forge/profile.md. НЕ коммитить в репо системы.
 forge_home: __FORGE_HOME__
 test_platform: local      # или ssh-хост тестовой площадки (напр. my-server)
-telegram: "off"           # "on" после настройки бота (/telegram:configure)
+telegram: "off"           # "on" после развёртывания канала (channel/README.md);
+                          # адрес и секрет — в ~/.claude/forge/channel.env, не здесь
 # session_model_recommended: fable   # какую модель системе советовать для главной сессии
 # agent_models:           # аварийное переопределение моделей субагентов
 #   block_agent: sonnet   # (по умолчанию берутся из agents/forge-*.md)
