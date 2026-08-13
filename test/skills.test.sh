@@ -75,6 +75,37 @@ for scope in "$SKILLS_DIR" "$FORGE_HOME/templates" "$FORGE_HOME/channel" "$FORGE
     echo "$home_path"
     exit 1
   }
+
+  # Путь с буквой диска или UNC — всегда чья-то конкретная машина. Ловится
+  # отдельно от домашних путей: прошлая проверка искала только `/Users/` и
+  # `/home/`, поэтому `C:\projects\...` в инструкции по каналу прожил незамеченным.
+  machine_path="$(grep -rnE -- '([A-Za-z]:\\|\\\\[A-Za-z0-9])' "$scope" || true)"
+  [[ -z "$machine_path" ]] || {
+    echo "FAIL: путь на конкретной машине (в ядре пути параметризуются):"
+    echo "$machine_path"
+    exit 1
+  }
+
+  # Имена личной инфраструктуры владельца (его серверов, сетей, соседних
+  # проектов) в ядре недопустимы, но перечислять их в самом ядре нельзя — они бы
+  # тогда в нём и оказались. Поэтому список лежит у владельца:
+  # ~/.claude/forge/private-names.txt, по одному слову в строке, регистр не важен.
+  # Нет файла — проверка пропускается с явной строкой, а не молча.
+  private_names="${FORGE_PRIVATE_NAMES:-$HOME/.claude/forge/private-names.txt}"
+  if [[ -f "$private_names" ]]; then
+    while IFS= read -r name; do
+      name="$(echo "$name" | sed 's/#.*//' | xargs || true)"
+      [[ -z "$name" ]] && continue
+      hit="$(grep -rniF -- "$name" "$scope" || true)"
+      [[ -z "$hit" ]] || {
+        echo "FAIL: в ядре имя личной инфраструктуры (перечислено в $private_names):"
+        echo "$hit"
+        exit 1
+      }
+    done < "$private_names"
+  else
+    echo "NOTE: нет $private_names — имена личной инфраструктуры не проверяются"
+  fi
 done
 
 echo "PASS"

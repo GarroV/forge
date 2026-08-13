@@ -1,4 +1,7 @@
-# Держит порт канала доступным снаружи (Tailscale/LAN) на MUSPELHEIM.
+# Держит порт канала доступным снаружи (частная сеть или LAN).
+# Нужен только на Windows с Docker Desktop и только если канал стоит на отдельном
+# хосте: Docker вешает inbound-BLOCK на свой backend, и порт перестаёт отвечать с
+# других машин, продолжая отвечать локально.
 #
 # Проблема, уже выученная на этом сервере: Docker Desktop при старте вешает
 # inbound-BLOCK на свой backend в профилях Private+Public, а block в Windows
@@ -20,7 +23,7 @@ $ErrorActionPreference = 'Continue'
 
 $port = 8090
 $ruleName = "Forge Channel Docker $port"
-$log = 'C:\projects\forge-channel\keep-port-open.log'
+$log = Join-Path $PSScriptRoot 'keep-port-open.log'   # рядом со скриптом, без привязки к пути
 
 function Log($m) {
     Add-Content -Path $log -Value ("[{0}] {1}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $m)

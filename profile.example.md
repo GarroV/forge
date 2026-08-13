@@ -1,6 +1,7 @@
 ---
 # Личный профиль Forge. Копируется install.sh в ~/.claude/forge/profile.md. НЕ коммитить в репо системы.
 forge_home: __FORGE_HOME__
+language: en              # язык разговора и документов проекта: en | ru | любой другой
 test_platform: local      # или ssh-хост тестовой площадки (напр. my-server)
 telegram: "off"           # "on" после развёртывания канала (channel/README.md);
                           # адрес и секрет — в ~/.claude/forge/channel.env, не здесь
