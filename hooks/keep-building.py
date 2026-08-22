@@ -47,9 +47,20 @@ from pathlib import Path
 # три подряд означают, что он буксует и указание продолжать ему не помогает.
 MAX_IDLE_HOLDS = 3
 
-# Потолок удержаний в час. Защита от порчи, при которой каждый ход стоит один
-# запрос: без потолка заклинивший сторож молча съест дневной лимит владельца.
-MAX_HOLDS_PER_HOUR = 40
+# Потолки удержаний. Каждое удержание — это лишний ход модели с полным контекстом
+# сессии, то есть настоящие деньги и настоящий лимит запросов. Поэтому у сторожа
+# два независимых предела, и оба намеренно тесные: легитимной стройке они не
+# мешают (между волнами хватает одного-двух удержаний), а любой сбой делают
+# ограниченным по стоимости, а не бесконечным.
+#
+# Часовой предел ловит быстрый цикл: что-то заклинило прямо сейчас.
+MAX_HOLDS_PER_HOUR = 12
+
+# Общий предел на одну стройку ловит медленный: стройка, которая движется по
+# графу, но не доходит до конца, могла бы удерживать ход сутками, обнуляя часовой
+# счётчик каждый час. После этого предела сторож замолкает до следующей команды
+# стройки — и это видно в маркере, а не молча.
+MAX_HOLDS_TOTAL = 60
 
 # Возраст, после которого маркер считается забытым, а не стройкой. Сессия,
 # начатая месяц назад, не идёт — она брошена, и держать её наследника незачем.
@@ -102,11 +113,20 @@ def write_marker(path: Path, data: dict) -> None:
 
 
 def fingerprint(root: Path) -> str:
-    """Отпечаток состояния стройки: по нему видно, сдвинулась ли она.
+    """Отпечаток движения стройки: по нему видно, сдвинулась ли она.
 
-    Берутся ровно те следы, которые оставляет любая настоящая работа: граф задач,
-    журнал, история коммитов. Время сюда не входит осознанно — иначе счётчик
-    буксования обнулялся бы сам собой, и защита от холостого цикла не работала бы.
+    Берутся только граф задач и журнал стройки — то, что диспетчер меняет, когда
+    действительно работает: взял задачу, закрыл задачу, записал событие.
+
+    Коммитов здесь намеренно нет, хотя соблазн велик. В проекте с забытым маркером
+    идёт обычная жизнь — правки, коммиты, чужие сессии, — и если считать её
+    движением стройки, счётчик буксования обнуляется на каждом коммите. Сторож
+    тогда удерживает ход снова и снова, пока не упрётся в часовой потолок, а
+    владелец получает сессию, которая жжёт лимит на ровном месте. Проверено
+    тестом: без этой оговорки посторонний коммит возобновляет удержания.
+
+    Времени здесь нет по той же причине: отпечаток, меняющийся сам собой, не
+    отличает работу от простоя.
     """
     parts = []
     for name in ("tasks.md", "progress.md"):
@@ -115,14 +135,6 @@ def fingerprint(root: Path) -> str:
             parts.append(f.read_text(encoding="utf-8", errors="replace"))
         except Exception:
             parts.append("")
-    try:
-        out = subprocess.run(
-            ["git", "-C", str(root), "rev-parse", "HEAD"],
-            capture_output=True, text=True, timeout=5,
-        )
-        parts.append(out.stdout.strip())
-    except Exception:
-        pass
     return hashlib.sha1("\x00".join(parts).encode("utf-8")).hexdigest()
 
 
@@ -231,9 +243,17 @@ def decide(payload: dict) -> None:
     if marker.get("hour_bucket") != bucket:
         marker["hour_bucket"] = bucket
         marker["holds_this_hour"] = 0
+    if marker.get("holds", 0) >= MAX_HOLDS_TOTAL:
+        if not marker.get("released_reason"):
+            marker["released_at"] = now.isoformat()
+            marker["released_reason"] = (
+                f"исчерпан общий потолок удержаний на стройку ({MAX_HOLDS_TOTAL})"
+            )
+            write_marker(path, marker)
+        release(f"исчерпан общий потолок удержаний на стройку ({MAX_HOLDS_TOTAL})")
     if marker.get("holds_this_hour", 0) >= MAX_HOLDS_PER_HOUR:
         write_marker(path, marker)
-        release("исчерпан потолок удержаний в час")
+        release(f"исчерпан потолок удержаний в час ({MAX_HOLDS_PER_HOUR})")
 
     current = fingerprint(root)
     if current == marker.get("last_fingerprint"):
@@ -253,12 +273,19 @@ def decide(payload: dict) -> None:
     marker["holds"] = marker.get("holds", 0) + 1
     marker["holds_this_hour"] = marker.get("holds_this_hour", 0) + 1
     marker["last_hold_at"] = now.isoformat()
+    # Сторож снова держит — значит прежний отпуск больше не факт. Старая причина,
+    # оставленная в маркере, врала бы владельцу через сводку: он прочитал бы
+    # «стройка отпущена, не двигалась», пока она идёт.
+    marker["released_reason"] = None
+    marker["released_at"] = None
     write_marker(path, marker)
 
     shown = ", ".join(f"{t['id']} ({t['block']}, {t['status']})" for t in work[:6])
     more = f" и ещё {len(work) - 6}" if len(work) > 6 else ""
     hold(
         f"Стройка не закончена: доступно задач — {len(work)}: {shown}{more}.\n"
+        f"(удержание {marker['holds']} из {MAX_HOLDS_TOTAL}; каждое стоит владельцу "
+        "лишнего хода, поэтому работай, а не отвечай текстом)\n"
         "Ход не отдаётся владельцу, пока есть работа, которую можно взять. "
         "Продолжай с шага 2 скилла forge-build: возьми готовые блоки и запусти их "
         "агентами, а не описывай словами, что собираешься сделать. Взял задачу — "
@@ -280,12 +307,19 @@ def cli(args) -> int:
         marker = read_marker(path) or {}
         marker.update({
             "project": str(target),
-            "started_at": marker.get("started_at") or datetime.now().isoformat(),
+            # Каждая команда стройки — новый прогон, поэтому счётчики обнуляются.
+            # Иначе исчерпанный на прошлом прогоне потолок остался бы навсегда, и
+            # следующая стройка молча шла бы без сторожа — то есть механизм
+            # выключился бы сам, а выглядело бы это как «он есть».
+            "started_at": datetime.now().isoformat(),
             "session_id": None,
-            "holds": marker.get("holds", 0),
+            "holds": 0,
+            "holds_this_hour": 0,
+            "hour_bucket": None,
             "idle_holds": 0,
             "last_fingerprint": None,
             "released_reason": None,
+            "released_at": None,
         })
         write_marker(path, marker)
         print(f"непрерывный режим включён для {target}\nмаркер: {path}")
@@ -301,6 +335,44 @@ def cli(args) -> int:
 
     if mode == "--marker-path":
         print(path)
+        return 0
+
+    if mode == "--off":
+        # Полное выключение механизма: снимается регистрация в settings.json и
+        # все маркеры стройки. Существует ради простого права владельца — иметь
+        # одну команду, после которой сторож не может удержать ничего и нигде,
+        # без разбирательств с JSON руками.
+        removed = 0
+        d = builds_dir()
+        if d.exists():
+            for f in d.glob("*.json"):
+                f.unlink()
+                removed += 1
+        settings = Path(os.path.expanduser("~")) / ".claude" / "settings.json"
+        unregistered = False
+        try:
+            data = json.loads(settings.read_text(encoding="utf-8"))
+            stop = data.get("hooks", {}).get("Stop", [])
+            kept = []
+            for group in stop:
+                hooks_left = [h for h in group.get("hooks", [])
+                              if "keep-building.py" not in str(h.get("command", ""))]
+                if len(hooks_left) != len(group.get("hooks", [])):
+                    unregistered = True
+                if hooks_left:
+                    group["hooks"] = hooks_left
+                    kept.append(group)
+            if unregistered:
+                data["hooks"]["Stop"] = kept
+                if not kept:
+                    data["hooks"].pop("Stop")
+                settings.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception as exc:
+            print(f"маркеры удалены ({removed}), но settings.json не поправлен: {exc}")
+            return 1
+        print(f"сторож выключен: маркеров удалено {removed}, "
+              f"регистрация {'снята' if unregistered else 'и не была найдена'}")
+        print("в уже открытых сессиях он перестанет вызываться только после перезапуска Claude Code")
         return 0
 
     if mode == "--check":

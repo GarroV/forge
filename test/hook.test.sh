@@ -146,6 +146,54 @@ expect_release "буксование: состояние не менялось, 
 echo '| T002 | api | — | todo | Ещё работа |' >> "$idle/tasks.md"
 call_hook "$idle"
 expect_hold "состояние изменилось — счётчик буксования обнулён"
+# Причина прошлого отпуска обязана исчезнуть: сводка читает маркер и иначе
+# скажет владельцу «стройка отпущена», пока сторож её держит.
+python3 -c "
+import json, sys
+d = json.load(open(sys.argv[1]))
+if d.get('released_reason'):
+    print('FAIL: в маркере осталась причина отпуска при работающем удержании:', d['released_reason'])
+    raise SystemExit(1)
+" "$(python3 "$HOOK" --marker-path "$idle")" || exit 1
+
+# 10а. Коммит сам по себе движением стройки НЕ считается. Это главный рычаг
+# защиты от сжигания лимита: в проекте, где забыт маркер, идёт обычная работа —
+# правки, коммиты, чужие сессии. Если считать их движением, счётчик буксования
+# обнуляется на каждом коммите, и сторож удерживает ход снова и снова, пока не
+# упрётся в часовой потолок. Движение стройки — это изменение графа задач, а не
+# активность в репозитории.
+commits="$(make_project commits '| T001 | api | — | todo | Работа |')"
+python3 "$HOOK" --start "$commits" > /dev/null
+call_hook "$commits"; expect_hold "коммиты: первое удержание"
+call_hook "$commits"; expect_hold "коммиты: второе удержание"
+call_hook "$commits"; expect_hold "коммиты: третье удержание"
+echo "посторонняя правка" > "$commits/README.md"
+git -C "$commits" add -A 2>/dev/null
+git -C "$commits" -c user.email=t@t -c user.name=t commit -qm "работа в репозитории" 2>/dev/null
+call_hook "$commits"
+expect_release "коммит без изменения графа задач не возобновляет удержания" "не двигалась"
+
+# 10б. Абсолютный потолок удержаний на одну стройку. Часового потолка мало:
+# стройка, которая движется по графу, но не доходит до конца, может удерживать
+# ход сутками. Потолок делает худший случай ограниченным и, главное, заметным.
+cap="$(make_project cap '| T001 | api | — | todo | Работа |')"
+python3 "$HOOK" --start "$cap" > /dev/null
+marker_cap="$(python3 "$HOOK" --marker-path "$cap")"
+python3 - "$marker_cap" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+d["holds"] = 999
+json.dump(d, open(sys.argv[1], "w"))
+PY
+call_hook "$cap"
+expect_release "исчерпан общий потолок удержаний на стройку" "потолок"
+
+# 10в. Новая команда стройки возвращает механизм к жизни. Без этого исчерпанный
+# потолок остаётся навсегда: следующий прогон идёт без сторожа, и выглядит это
+# как работающий механизм, который молча ничего не делает.
+python3 "$HOOK" --start "$cap" > /dev/null
+call_hook "$cap"
+expect_hold "после перезапуска стройки потолок отсчитывается заново"
 
 # 11. Снятый маркер больше не держит: это стоп-кран владельца.
 python3 "$HOOK" --stop "$idle" > /dev/null
@@ -161,6 +209,20 @@ set -e
 broken_reason="$(echo 'не json' | FORGE_HOOK_TRACE=1 python3 "$HOOK" 2>&1 >/dev/null)"
 grep -q "сбой сторожа" <<<"$broken_reason" || { echo "FAIL: на битом payload сторож не назвал сбой сбоем: $broken_reason"; exit 1; }
 (( empty == 0 )) || { echo "FAIL: пустой stdin дал код $empty вместо 0"; exit 1; }
+
+# 12а. Рубильник владельца: одна команда снимает сторожа отовсюду.
+off_p="$(make_project offtest '| T001 | api | — | todo | Работа |')"
+python3 "$HOOK" --start "$off_p" > /dev/null
+mkdir -p "$HOME/.claude"
+cat > "$HOME/.claude/settings.json" <<'JSON'
+{ "hooks": { "Stop": [ { "hooks": [ { "type": "command", "command": "python3 /куда-то/hooks/keep-building.py" } ] } ],
+             "PreToolUse": [ { "hooks": [ { "type": "command", "command": "чужой-хук" } ] } ] } }
+JSON
+python3 "$HOOK" --off > /dev/null
+call_hook "$off_p"
+expect_release "после --off сторож не держит ничего" "нет маркера"
+grep -q "keep-building" "$HOME/.claude/settings.json" && { echo "FAIL: --off не снял регистрацию"; exit 1; }
+grep -q "чужой-хук" "$HOME/.claude/settings.json" || { echo "FAIL: --off снёс чужой хук"; exit 1; }
 
 # 13. Забытый маркер не держит вечно: стройка недельной давности — это не стройка.
 old="$(make_project old '| T001 | api | — | todo | Работа |')"
