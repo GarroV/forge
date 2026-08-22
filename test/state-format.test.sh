@@ -124,6 +124,29 @@ check_fixture() {
     done <<< "$worked_blocks"
   fi
 
+  # Проверка 6: файл состояния, лежащий не по своему каноническому пути.
+  # Канон один: `tasks.md` и `progress.md` — в корне проекта, `questions.md` и
+  # `decisions.md` — в `docs/forge/`. Двойник по зеркальному пути не ломает
+  # ничего сразу и потому опаснее поломки: сессия читает файл по имени, получает
+  # не тот, и восстанавливает по нему картину — а перечитывать код ради проверки
+  # ей запрещено скиллом стройки. Проверено на живом прогоне (`dodo_pnl_service`,
+  # 21.08.2026): рядом с корневым `progress.md` завёлся `docs/forge/progress.md`,
+  # журнал уехал в него, корневой отстал на три дня, и заметил это владелец, а не
+  # система.
+  local canonical wrong
+  for pair in "tasks.md:docs/forge/tasks.md" \
+              "progress.md:docs/forge/progress.md" \
+              "docs/forge/questions.md:questions.md" \
+              "docs/forge/decisions.md:decisions.md"; do
+    canonical="${pair%%:*}"
+    wrong="${pair##*:}"
+    if [[ -e "$FIXTURE/$wrong" ]]; then
+      echo "FAIL: [$FIXTURE] файл состояния лежит не по своему пути: $wrong (канон — $canonical)."
+      echo "      Двойник читается вместо канонического и молча даёт устаревшую картину."
+      exit 1
+    fi
+  done
+
   echo "PASS: $FIXTURE"
 }
 
