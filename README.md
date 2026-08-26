@@ -120,6 +120,16 @@ for t in test/*.test.sh; do bash "$t"; done
 
 Тесты изолированы: твой профиль и настройки они не трогают.
 
+Один из них — `test/channel-db.test.sh` — требует интерпретатора с зависимостями
+канала и **честно краснеет**, если их нет: печатает, чего не хватает, вместо того
+чтобы молча пропустить проверку. Разовая подготовка:
+
+```
+python3 -m venv /tmp/forge-channel-venv
+/tmp/forge-channel-venv/bin/pip install asyncpg aiohttp aiogram
+FORGE_TEST_PYTHON=/tmp/forge-channel-venv/bin/python bash test/channel-db.test.sh
+```
+
 ## Как вести проект
 
 Команды вызываются словами, в обычном разговоре с Claude Code: отдельного CLI у
