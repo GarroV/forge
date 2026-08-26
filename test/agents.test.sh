@@ -42,11 +42,16 @@ done
 
 # Детектор дрифта в обе стороны: скилл называет агента по имени, и если имя
 # разъехалось с определением, запуск упадёт «agent type not found» уже в бою.
+# Имена самих скиллов исключаются по фактическому составу каталога, а не списком
+# в тексте теста: список пришлось бы дописывать при каждом новом скилле, и первый
+# же добавленный скилл ронял бы этот тест как «агент без определения».
+skill_names="$(for dir in "$FORGE_HOME"/skills/*/; do basename "${dir%/}"; done | paste -sd'|' -)"
+
 while IFS= read -r referenced; do
   [[ -z "$referenced" ]] && continue
   [[ " ${defined[*]} " == *" $referenced "* ]] || fail "скиллы ссылаются на агента $referenced, а определения нет"
 done < <(grep -rohE '\bforge-(block-agent|executor|researcher|[a-z-]+)\b' "$FORGE_HOME/skills" "$FORGE_HOME/templates" \
-         | grep -vE '^forge-(new|build|deploy|status)$' | sort -u)
+         | grep -vE "^(${skill_names})$" | sort -u)
 
 for name in "${defined[@]}"; do
   grep -rqE "\b$name\b" "$FORGE_HOME/skills" "$FORGE_HOME/templates" \
