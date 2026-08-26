@@ -4,3 +4,6 @@
 # Секреты канала: только на сервере, в git — лишь .env.example
 channel/.env
 channel/keep-port-open.log
+
+# Отчёты сканера безопасности: локальные артефакты прогона, не часть системы
+aitriage-reports/
