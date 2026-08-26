@@ -51,6 +51,17 @@ done
 
 (( found == 1 )) || fail "не найдено ни одного скилла в $SKILLS_DIR"
 
+# 3a. Скиллы, создающие задачи на GitHub, обязаны ссылаться на стандарт трекера.
+# Без него тон и состав задачи задаёт каждый агент заново: в беклоге появлялись
+# цитаты из переписки владельца, имена рабочей инфраструктуры и описания
+# персональных данных — а трекер читают посторонние.
+for creator in forge-build forge-new; do
+  skill="$SKILLS_DIR/$creator/SKILL.md"
+  [[ -f "$skill" ]] || continue
+  grep -qF 'templates/issue-style.md' "$skill" || \
+    fail "[$creator] создаёт задачи на GitHub, но не ссылается на templates/issue-style.md"
+done
+
 # 4. Чистота ядра: скиллы и шаблоны обязаны работать у любого человека, а не
 # только у владельца этой машины. Поэтому в них не должно быть ни зашитого адреса
 # конкретного репозитория (`--repo владелец/имя`), ни абсолютных путей в домашний
@@ -107,5 +118,30 @@ for scope in "$SKILLS_DIR" "$FORGE_HOME/templates" "$FORGE_HOME/channel" "$FORGE
     echo "NOTE: нет $private_names — имена личной инфраструктуры не проверяются"
   fi
 done
+
+# 5. Имена личной инфраструктуры не должны попадать и в документацию: репозиторий
+# публичный, а доки читают снаружи. Проверка отделена от чистоты ядра — там
+# запрещены ещё и зашитый адрес репозитория и абсолютные пути, а README обязан
+# называть адрес клонирования и `~/.claude/...`. Повод: ревизия 26.08.2026 нашла
+# в docs/ имя домашнего сервера, а в замере по тестам — имена шестнадцати личных и
+# рабочих репозиториев вместе с их состоянием.
+private_names="${FORGE_PRIVATE_NAMES:-$HOME/.claude/forge/private-names.txt}"
+if [[ -f "$private_names" ]]; then
+  for scope in "$FORGE_HOME/docs" "$FORGE_HOME/README.md"; do
+    [[ -e "$scope" ]] || continue
+    while IFS= read -r name; do
+      name="$(echo "$name" | sed 's/#.*//' | xargs || true)"
+      [[ -z "$name" ]] && continue
+      hit="$(grep -rniF -- "$name" "$scope" || true)"
+      [[ -z "$hit" ]] || {
+        echo "FAIL: в документации имя личной инфраструктуры (перечислено в $private_names):"
+        echo "$hit"
+        exit 1
+      }
+    done < "$private_names"
+  done
+else
+  echo "NOTE: нет $private_names — имена личной инфраструктуры в документации не проверяются"
+fi
 
 echo "PASS"
