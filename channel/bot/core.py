@@ -26,6 +26,13 @@ TELEGRAM_TEXT_LIMIT = 4096
 # Имя проекта попадает в текст и в базу; держим коротким и без сюрпризов.
 PROJECT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$")
 
+# Типы, после которых владелец отвечает. Только к ним добавляется подсказка про
+# реплай: на «часть готова» и «готово» отвечать нечего, а лишняя строка в каждом
+# сообщении быстро перестаёт читаться.
+AWAITING_ANSWER = frozenset({"question", "alert"})
+
+REPLY_HINT = "↩︎ Ответь реплаем на это сообщение — так ответ дойдёт до нужного проекта."
+
 
 def parse_bearer(header: Optional[str]) -> Optional[str]:
     """Достаёт токен из заголовка `Authorization: Bearer <токен>`.
@@ -69,6 +76,68 @@ def is_owner(chat_id: object, owner_chat_id: object) -> bool:
     return str(chat_id).strip() == str(owner_chat_id).strip()
 
 
+def valid_project(value: object) -> bool:
+    """Годится ли строка как имя проекта.
+
+    Имя попадает и в текст сообщения, и в адресацию ответов, поэтому проверка
+    одна на всех входах: `notify`, `ack` и параметр `inbox`. Разъехавшиеся
+    правила означали бы, что проект называет себя по-разному в разных вызовах и
+    перестаёт узнавать собственные ответы.
+    """
+    return isinstance(value, str) and bool(PROJECT_RE.match(value))
+
+
+def visible_to(row_project: Optional[str], asking_project: Optional[str]) -> bool:
+    """Виден ли ответ владельца тому, кто сейчас спрашивает.
+
+    Ради этого правила и заведена адресация. Раньше очередь ответов была общей:
+    диспетчер, спросивший первым, забирал чужой ответ, применял его к своим
+    вопросам и помечал разобранным — второй проект ждал вечно, а первый ехал не
+    туда. Отказ был молчаливым с обеих сторон.
+
+    Два послабления сделаны намеренно:
+      · ответ **без адреса** (владелец написал не реплаем) виден всем — иначе он
+        не достался бы никому, а это хуже, чем достаться не тому;
+      · спрашивающий **без имени** видит всё — старый клиент продолжает работать
+        как раньше.
+    """
+    if asking_project is None or row_project is None:
+        return True
+    return row_project == asking_project
+
+
+def parse_ack(payload: object) -> Tuple[Optional[dict], Optional[str]]:
+    """Разбирает тело запроса на пометку ответов разобранными.
+
+    Возвращает (данные, причина отказа) — ровно одно из двух не None. Имя
+    проекта необязательно, но если названо негодно — это отказ, а не «считаю,
+    что не назвался»: опечатка в имени иначе тихо превращалась бы в право
+    помечать чужое.
+    """
+    if not isinstance(payload, dict):
+        return None, "тело запроса должно быть объектом JSON"
+
+    raw_ids = payload.get("ids")
+    if not isinstance(raw_ids, list):
+        return None, 'ожидается {"ids": [числа]}'
+
+    ids = []
+    for item in raw_ids:
+        # bool — подкласс int, и `int(True)` дал бы идентификатор 1 на ровном месте.
+        if isinstance(item, bool) or not isinstance(item, (int, str)):
+            return None, "идентификаторы должны быть числами"
+        try:
+            ids.append(int(item))
+        except ValueError:
+            return None, "идентификаторы должны быть числами"
+
+    project = payload.get("project")
+    if project is not None and not valid_project(project):
+        return None, "поле project: латиница, цифры, пробел, точка, дефис, подчёркивание, до 64 символов"
+
+    return {"ids": ids, "project": project}, None
+
+
 def validate_notify(payload: object) -> Tuple[bool, Optional[str]]:
     """Проверяет тело запроса на отправку сообщения.
 
@@ -86,8 +155,7 @@ def validate_notify(payload: object) -> Tuple[bool, Optional[str]]:
     if not isinstance(text, str) or not text.strip():
         return False, "поле text обязательно и не может быть пустым"
 
-    project = payload.get("project")
-    if not isinstance(project, str) or not PROJECT_RE.match(project):
+    if not valid_project(payload.get("project")):
         return False, "поле project обязательно: латиница, цифры, пробел, точка, дефис, подчёркивание, до 64 символов"
 
     return True, None
@@ -142,4 +210,26 @@ def outbound_text(kind: str, project: str, text: str) -> str:
         "done": "🏁 Готово",
     }
     head = marks.get(kind, kind)
-    return "{} · {}\n\n{}".format(head, project, text.strip())
+    body = "{} · {}\n\n{}".format(head, project, text.strip())
+    if kind in AWAITING_ANSWER:
+        # Без реплая канал не знает, какому проекту адресован ответ: текст
+        # ответа про проект ничего не говорит. Подсказка стоит одной строки и
+        # экономит владельцу разбор «почему стройка не увидела мой ответ».
+        body += "\n\n" + REPLY_HINT
+    return body
+
+
+def inbound_reply_text(project: Optional[str]) -> str:
+    """Что канал отвечает владельцу, приняв сообщение.
+
+    Подтверждение называет проект, если ответ адресован реплаем, и честно
+    предупреждает, когда адресата нет: молчаливое «Принял» на безадресный ответ
+    оставляло владельца в уверенности, что ответ ушёл по назначению.
+    """
+    if project:
+        return "Принял — проект {}. Заберу в работу, когда дойду до этого вопроса.".format(project)
+    return (
+        "Принял. Но к какому проекту это относится, я не вижу — ответ уйдёт в общую "
+        "очередь, и его может забрать любая идущая стройка. Если их сейчас больше "
+        "одной, ответь реплаем на сообщение нужной."
+    )

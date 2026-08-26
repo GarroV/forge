@@ -28,7 +28,17 @@ from aiogram.exceptions import TelegramConflictError
 from aiohttp import web
 
 import db
-from core import chunk_text, is_owner, outbound_text, parse_bearer, secret_ok, validate_notify
+from core import (
+    chunk_text,
+    inbound_reply_text,
+    is_owner,
+    outbound_text,
+    parse_ack,
+    parse_bearer,
+    secret_ok,
+    valid_project,
+    validate_notify,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -106,22 +116,60 @@ async def handle_notify(request: web.Request) -> web.Response:
 
 
 async def handle_inbox(request: web.Request) -> web.Response:
+    """Неразобранные ответы владельца, адресованные спрашивающему.
+
+    `?project=<имя>` — кто спрашивает. Без параметра отдаётся всё, как до
+    появления адресации: клиент, который о ней не знает, не должен сломаться.
+    Негодное имя — отказ, а не «считаю, что не назвался»: опечатка иначе тихо
+    превращалась бы в право забрать чужие ответы.
+    """
     if not authorized(request):
         return deny()
-    items = await db.pending_inbound(request.app["pool"])
+
+    project = request.query.get("project")
+    if project is not None and not valid_project(project):
+        return web.json_response(
+            {"error": "параметр project: латиница, цифры, пробел, точка, дефис, подчёркивание, до 64 символов"},
+            status=400,
+        )
+
+    items = await db.pending_inbound(request.app["pool"], project=project)
     return web.json_response({"pending": items})
 
 
 async def handle_ack(request: web.Request) -> web.Response:
+    """Пометить ответы разобранными.
+
+    `project` в теле — кто помечает. Чужие ответы не помечаются и возвращаются
+    списком со статусом `409`: пометить чужое — самый дорогой способ его
+    потерять, и отказ должен быть громким, а не строчкой в теле ответа `200`.
+    Свои при этом помечаются: частичный отказ не повод терять сделанное.
+    """
     if not authorized(request):
         return deny()
     try:
         payload = await request.json()
-        ids = [int(x) for x in payload["ids"]]
     except Exception:
-        return web.json_response({"error": "ожидается {\"ids\": [числа]}"}, status=400)
-    touched = await db.ack_inbound(request.app["pool"], ids)
-    return web.json_response({"ok": True, "acked": touched})
+        return web.json_response({"error": "тело запроса не разобрано как JSON"}, status=400)
+
+    data, why = parse_ack(payload)
+    if data is None:
+        return web.json_response({"error": why}, status=400)
+
+    touched, rejected = await db.ack_inbound(
+        request.app["pool"], data["ids"], project=data["project"]
+    )
+    if rejected:
+        return web.json_response(
+            {
+                "ok": False,
+                "acked": touched,
+                "rejected": rejected,
+                "error": "эти ответы адресованы другому проекту и не помечены",
+            },
+            status=409,
+        )
+    return web.json_response({"ok": True, "acked": touched, "rejected": []})
 
 
 class PollingState:
@@ -225,12 +273,17 @@ def build_dispatcher(pool, owner: str) -> Dispatcher:
             await message.answer("Понимаю только текст.")
             return
 
-        new_id = await db.save_inbound(pool, chat_id, message.message_id, text)
+        # Реплай — единственный способ узнать адресата: сам текст ответа про
+        # проект ничего не говорит, а очередь ответов общая на все стройки.
+        reply_to = message.reply_to_message.message_id if message.reply_to_message else None
+        new_id, project = await db.save_owner_answer(
+            pool, chat_id, message.message_id, text, reply_to_message_id=reply_to
+        )
         if new_id is None:
             # Повторная доставка того же сообщения — не ошибка и не новый ответ.
             log.info("сообщение %s уже в очереди, пропускаю", message.message_id)
             return
-        await message.answer("Принял. Заберу в работу, когда дойду до этого вопроса.")
+        await message.answer(inbound_reply_text(project))
 
     return dp
 
@@ -318,23 +371,23 @@ async def notify_owner(bot: Bot, owner: str, kind: str, project: str, text: str)
 # ─── Точка входа ──────────────────────────────────────────────────────────────
 
 
-async def main() -> None:
-    env = read_env()
-    pool = await db.connect(env["dsn"])
-    bot = Bot(token=env["token"])
-    dp = build_dispatcher(pool, env["owner"])
+def build_app(secret: str, owner: str, pool, bot, polling: "PollingState") -> web.Application:
+    """Собирает HTTP-интерфейс канала.
 
-    state = PollingState()
-
+    Вынесено из точки входа не ради красоты: так приложение поднимается в тестах
+    с настоящей базой и подменённым Telegram, и стык «обработчик ↔ база»
+    проверяется целиком. Именно на этом стыке ошибка молчалива — забытый
+    параметр отвечает `200`, отдавая чужое.
+    """
     app = web.Application()
-    app["secret"] = env["secret"]
-    app["owner"] = env["owner"]
+    app["secret"] = secret
+    app["owner"] = owner
     app["pool"] = pool
     app["bot"] = bot
     # Состояние опроса — отдельный объект, а не запись в приложении: aiohttp
     # ругается на изменение состояния уже запущенного приложения, и это
     # справедливо. Объект можно менять сколько угодно, приложение — нет.
-    app["polling"] = state
+    app["polling"] = polling
     app.add_routes(
         [
             web.post("/notify", handle_notify),
@@ -343,6 +396,17 @@ async def main() -> None:
             web.get("/healthz", handle_health),
         ]
     )
+    return app
+
+
+async def main() -> None:
+    env = read_env()
+    pool = await db.connect(env["dsn"])
+    bot = Bot(token=env["token"])
+    dp = build_dispatcher(pool, env["owner"])
+
+    state = PollingState()
+    app = build_app(env["secret"], env["owner"], pool, bot, state)
 
     runner = web.AppRunner(app)
     await runner.setup()

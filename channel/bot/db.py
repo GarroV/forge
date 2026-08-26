@@ -7,9 +7,11 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, Sequence
+from typing import List, Optional, Sequence, Tuple
 
 import asyncpg
+
+from core import visible_to
 
 SCHEMA = """
 create table if not exists outbound (
@@ -38,6 +40,21 @@ create table if not exists inbound (
 -- перебирать всю переписку по мере её роста.
 create index if not exists inbound_pending_idx
     on inbound (id) where acked_at is null;
+
+-- Адрес ответа: какому проекту он предназначен. Заполняется по реплаю (см.
+-- project_for_message), поэтому nullable: ответ не реплаем адреса не имеет и
+-- остаётся виден всем.
+--
+-- Отдельным ALTER, а не колонкой в CREATE выше, потому что канал уже работает и
+-- полон данных: `create table if not exists` существующую таблицу не трогает
+-- вовсе, и колонка в ней не появилась бы никогда — канал упал бы после
+-- обновления на первом же запросе.
+alter table inbound add column if not exists project text;
+
+-- Поиск проекта по id отправленного сообщения — на каждый ответ владельца.
+-- Без индекса это перебор всей переписки; она растёт и не чистится.
+create index if not exists outbound_message_ids_idx
+    on outbound using gin (tg_message_ids);
 """
 
 
@@ -70,27 +87,80 @@ async def log_outbound(
 
 
 async def save_inbound(
-    pool: asyncpg.Pool, chat_id: int, tg_message_id: int, body: str
+    pool: asyncpg.Pool,
+    chat_id: int,
+    tg_message_id: int,
+    body: str,
+    project: Optional[str] = None,
 ) -> Optional[int]:
     """Кладёт ответ владельца в очередь.
+
+    `project` — кому ответ адресован; None означает «адрес неизвестен» (владелец
+    написал не реплаем). Такой ответ видят все: достаться не тому плохо, но не
+    достаться никому — хуже.
 
     Возвращает id новой записи либо None, если такое сообщение уже лежит:
     повторная доставка от Telegram не должна плодить дубликаты ответов.
     """
     async with pool.acquire() as conn:
         return await conn.fetchval(
-            "insert into inbound (chat_id, tg_message_id, body)"
-            " values ($1, $2, $3)"
+            "insert into inbound (chat_id, tg_message_id, body, project)"
+            " values ($1, $2, $3, $4)"
             " on conflict (chat_id, tg_message_id) do nothing"
             " returning id",
             chat_id,
             tg_message_id,
             body,
+            project,
         )
 
 
-async def pending_inbound(pool: asyncpg.Pool, limit: int = 50) -> List[dict]:
-    """Неразобранные ответы, в порядке поступления.
+async def project_for_message(pool: asyncpg.Pool, tg_message_id: int) -> Optional[str]:
+    """Какому проекту принадлежит отправленное сообщение с таким id.
+
+    Так ответ владельца получает адрес: он отвечает реплаем, Telegram приносит id
+    сообщения, а журнал отправленного помнит, чей это был вопрос. Длинное
+    сообщение уходит несколькими частями — совпадение по любой из них годится,
+    поэтому поиск идёт по массиву целиком.
+    """
+    async with pool.acquire() as conn:
+        return await conn.fetchval(
+            "select project from outbound where $1 = any(tg_message_ids)"
+            " order by id desc limit 1",
+            tg_message_id,
+        )
+
+
+async def save_owner_answer(
+    pool: asyncpg.Pool,
+    chat_id: int,
+    tg_message_id: int,
+    body: str,
+    reply_to_message_id: Optional[int] = None,
+) -> Tuple[Optional[int], Optional[str]]:
+    """Принимает ответ владельца и определяет, кому он адресован.
+
+    Возвращает (id записи, проект). Первое — None, если такое сообщение уже
+    лежало (повторная доставка Telegram). Второе — None, если адрес неизвестен:
+    ответ пришёл не реплаем или реплаем на сообщение, которого нет в журнале.
+
+    Определяется адрес именно здесь, при приёме, а не при выдаче: id сообщения,
+    на которое ответили, есть только в этот момент.
+    """
+    project = None
+    if reply_to_message_id is not None:
+        project = await project_for_message(pool, reply_to_message_id)
+    row_id = await save_inbound(pool, chat_id, tg_message_id, body, project=project)
+    return row_id, project
+
+
+async def pending_inbound(
+    pool: asyncpg.Pool, project: Optional[str] = None, limit: int = 50
+) -> List[dict]:
+    """Неразобранные ответы, адресованные спрашивающему, в порядке поступления.
+
+    `project` не задан — отдаётся всё, как до появления адресации: клиент,
+    который о ней не знает, продолжает работать.
 
     Ничего не помечает: пометка — отдельным вызовом после того, как система
     ответ действительно применила. Иначе падение между чтением и применением
@@ -98,36 +168,59 @@ async def pending_inbound(pool: asyncpg.Pool, limit: int = 50) -> List[dict]:
     """
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            "select id, body, received_at from inbound"
-            " where acked_at is null order by id limit $1",
+            "select id, body, project, received_at from inbound"
+            " where acked_at is null and ($2::text is null or project is null or project = $2)"
+            " order by id limit $1",
             limit,
+            project,
         )
+    # Условие в запросе сужает выборку, а решение принимает то же правило, что и
+    # у ack: держать адресацию в одном месте дешевле, чем ловить её расхождение
+    # между двумя дорогами.
     return [
         {
             "id": r["id"],
             "text": r["body"],
+            "project": r["project"],
             "received_at": r["received_at"].isoformat(),
         }
         for r in rows
+        if visible_to(r["project"], project)
     ]
 
 
-async def ack_inbound(pool: asyncpg.Pool, ids: Sequence[int]) -> int:
-    """Помечает ответы разобранными. Возвращает, сколько записей затронуто.
+async def ack_inbound(
+    pool: asyncpg.Pool, ids: Sequence[int], project: Optional[str] = None
+) -> Tuple[int, List[int]]:
+    """Помечает ответы разобранными. Возвращает (сколько помечено, чужие id).
+
+    Пометить чужой ответ — самый дорогой способ его потерять: адресат не отличит
+    «ответа ещё нет» от «ответ съеден» и будет ждать вечно. Поэтому чужие id не
+    помечаются и возвращаются вызывающему списком, чтобы отказ был громким.
 
     Повторный вызов на уже помеченных ничего не портит и вернёт 0 — вызывающему
     не нужно помнить, ack'ал он уже или нет.
     """
     if not ids:
-        return 0
+        return 0, []
     async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "select id, project from inbound where id = any($1::bigint[])", list(ids)
+        )
+        mine = [r["id"] for r in rows if visible_to(r["project"], project)]
+        foreign = [r["id"] for r in rows if not visible_to(r["project"], project)]
+        if not mine:
+            return 0, foreign
         result = await conn.execute(
             "update inbound set acked_at = now()"
             " where id = any($1::bigint[]) and acked_at is null",
-            list(ids),
+            mine,
         )
+    # Гонка между выборкой и пометкой безопасна: чужое сюда не попадает вовсе, а
+    # два одновременных ack своего разрешает `acked_at is null` — второй получит 0.
     # asyncpg отдаёт строку вида "UPDATE 3".
-    return int(result.split()[-1]) if result else 0
+    touched = int(result.split()[-1]) if result else 0
+    return touched, foreign
 
 
 async def db_alive(pool: asyncpg.Pool) -> bool:
