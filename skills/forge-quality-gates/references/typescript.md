@@ -3,6 +3,11 @@
 Сверено 26.08.2026. Источники, версии и способ перепроверки —
 `docs/research/2026-08-26-quality-gates.md`.
 
+Пакеты линта: `eslint`, `typescript-eslint`, `eslint-plugin-sonarjs`,
+`eslint-plugin-unicorn`, `eslint-plugin-depend`, `@eslint/json`. Последний нужен
+не для красоты: без него `package.json` не линтуется вообще, и правило запрета
+зависимостей не срабатывает никогда — подробности в разделе про скелет.
+
 ## Обязательный набор
 
 | Роль | Команда | Чем |
@@ -10,7 +15,7 @@
 | Формат | `prettier --check .` | Prettier с дефолтами; спорить о настройках дороже, чем принять |
 | Линт с типами | `eslint .` | ESLint 10, flat config, `typescript-eslint` пресеты `strictTypeChecked` + `stylisticTypeChecked` |
 | Типы | `tsc --noEmit` | строгий tsconfig; `noUncheckedIndexedAccess` включать до появления кода |
-| Тесты и порог | `vitest run --coverage` | `coverage.thresholds` в конфиге воркспейса |
+| Тесты и порог | `vitest run --coverage` | `coverage.thresholds` в конфиге; в монорепозитории — только в корневом (см. ниже) |
 | Мёртвый код | `knip` | понимает воркспейсы, есть аннотации для CI и постепенное внедрение |
 | Границы | `depcruise apps packages` | `dependency-cruiser`; либо `eslint-plugin-boundaries`, если нужна ошибка прямо в редакторе |
 
@@ -63,19 +68,52 @@
 - `eslint-plugin-jsx-a11y` не поддерживает ESLint 10, последний релиз — октябрь
   2024. Доступность проверять прогоном, не статикой.
 
+## Монорепозиторий
+
+Обязательный набор написан от одиночного пакета. В воркспейсах три команды из
+шести не запускаются с первого раза — это не про стиль, а про то, что гейт
+краснеет по причине, не связанной с кодом, и его снимают.
+
+| Что ломается | Как правильно |
+|---|---|
+| Порог покрытия негде положить | В Vitest 4 нет `defineWorkspace` (проверено на 4.1.11: `dist/config.d.ts` экспортирует `defineConfig` и `defineProject`). Проекты объявляются через `test.projects` в корневом конфиге, отчёт покрытия один на прогон — порог живёт на корневом уровне, у отдельного приложения своего нет. |
+| `tsc --noEmit` красный на воркспейсе Next | Next 16 генерирует типы роутов отдельным шагом. Порядок: `next typegen`, затем проверка типов. До генерации ошибки идут на импортах сгенерированных типов. |
+| `next lint` не существует | Убран в Next 16 (проверено по `packages/next/src/bin/next.ts`: в v15.5.4 команда `lint` есть, в v16.3.3 её нет). Линт запускается ESLint напрямую. |
+
+Плюс роль, которой в наборе шести нет и которая в воркспейсах ломается молча —
+**гигиена воркспейсов**, условие включения «больше одного воркспейса»:
+
+| Проверка | Команда | Что ловит |
+|---|---|---|
+| Установленное совпадает с локом | `yarn install --immutable` в CI | дрейф lockfile: у разработчика одна версия, в CI другая |
+| Одна версия зависимости на все воркспейсы | `yarn constraints` (встроено в Yarn 4) | разъезд версий TypeScript/React между приложениями |
+
+Ни то, ни другое не попадает в шесть ролей: границы модулей — про импорты,
+мёртвый код — про неиспользуемое.
+
 ## Скелет линта
 
+Прогнан на eslint 10.9.1, typescript-eslint 8.68.0, sonarjs 4.2.0, unicorn 73.0.0,
+depend 1.5.0, typescript 6.0.3: все правила ниже срабатывают на нарушениях, линт
+проходит по `package.json`, по `src/` и по самому конфигу без фатальных ошибок.
+
 ```js
-// packages/config или корень проекта: eslint.config.mjs
+// eslint.config.mjs
 import tseslint from "typescript-eslint";
 import sonarjs from "eslint-plugin-sonarjs";
 import unicorn from "eslint-plugin-unicorn";
 import depend from "eslint-plugin-depend";
+import json from "@eslint/json";
 
 export default tseslint.config(
-  tseslint.configs.strictTypeChecked,
-  tseslint.configs.stylisticTypeChecked,
   {
+    // files обязателен. Типизированные наборы без него применяются ко всем
+    // файлам, и линт падает на первом же нетипизированном — на package.json
+    // или на самом eslint.config.mjs: «You have used a rule which requires
+    // type information». Гейт выглядит сломанным по причине, не связанной с
+    // кодом, и его снимают.
+    files: ["**/*.ts", "**/*.tsx"],
+    extends: [tseslint.configs.strictTypeChecked, tseslint.configs.stylisticTypeChecked],
     languageOptions: { parserOptions: { projectService: true } },
     plugins: { sonarjs, unicorn, depend },
     rules: {
@@ -94,11 +132,32 @@ export default tseslint.config(
       "@typescript-eslint/switch-exhaustiveness-check": "error",
     },
   },
+  {
+    // Отдельный блок под package.json. Без него depend/ban-dependencies
+    // молча не проверяет зависимости: ESLint пропускает файл целиком
+    // («File ignored because no matching configuration was supplied»),
+    // правило в конфиге есть и не срабатывает никогда.
+    files: ["**/package.json"],
+    language: "json/json",
+    plugins: { json, depend },
+    rules: { "depend/ban-dependencies": "error" },
+  },
 );
 ```
 
 `unicorn/no-negated-condition` намеренно не включён — дублирует
 `sonarjs/no-inverted-boolean-check`.
+
+Что выяснилось на прогоне и стоит знать заранее:
+
+- `depend/ban-dependencies` по умолчанию запрещает **axios** (он в манифесте
+  `preferred` библиотеки `module-replacements`, вместе с ещё четырьмя сотнями
+  имён). Если пакет выбран осознанно — не отключать правило целиком, а разрешить
+  точечно: `["error", { allowed: ["axios"] }]`.
+- `sonarjs/no-duplicated-branches` не срабатывает на ветках из одного оператора
+  (`if (a) return "x"; else return "x";` проходит). Ловит ветки из двух и более.
+- Порог `cognitive-complexity` считается по ветвлениям: функция из
+  семнадцати последовательных `if` даёт 17 и краснеет при пороге 15.
 
 ## Ситуативные
 
