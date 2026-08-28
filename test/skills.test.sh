@@ -123,8 +123,11 @@ done
 # личные пути живут в профиле пользователя.
 # channel/ тоже ядро: он разворачивается у любого, кто поставит систему, поэтому
 # ни чужих адресов репозиториев, ни абсолютных домашних путей в нём быть не должно.
-for scope in "$SKILLS_DIR" "$FORGE_HOME/templates" "$FORGE_HOME/channel" "$FORGE_HOME/agents"; do
-  [[ -d "$scope" ]] || continue
+# Файл baseline попадает в этот же список: AITriage записывает в него абсолютный
+# путь до файла с находкой, а репозиторий общий — путь и утечёт, и не сработает на
+# чужой машине. Сопоставление идёт по хешу, поэтому относительный путь безопасен.
+for scope in "$SKILLS_DIR" "$FORGE_HOME/templates" "$FORGE_HOME/channel" "$FORGE_HOME/agents" "$FORGE_HOME/.aitriage-baseline.json"; do
+  [[ -e "$scope" ]] || continue
 
   hardcoded_repo="$(grep -rnE -- '--repo[= ]+[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+' "$scope" || true)"
   [[ -z "$hardcoded_repo" ]] || {
