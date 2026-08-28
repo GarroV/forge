@@ -44,7 +44,7 @@ class ApiTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         pool = await asyncpg.create_pool(DSN, min_size=1, max_size=2)
         async with pool.acquire() as conn:
-            await conn.execute("drop table if exists inbound, outbound")
+            await conn.execute("drop table if exists inbound, outbound, heartbeat")
         await pool.close()
 
         self.pool = await db.connect(DSN)
@@ -137,6 +137,46 @@ class TestAckProtectsForeignAnswers(ApiTestCase):
         response = await self.client.post("/ack", json={"ids": "1,2"}, headers=AUTH)
 
         self.assertEqual(response.status, 400)
+
+
+class TestHealthReportsWhatProcessMemoryCannot(ApiTestCase):
+    """Поля, которые переживают зависание процесса и перезапуск.
+
+    Повод: канал завис на семь часов, `/healthz` не отдал ничего, и когда именно
+    он замолчал, узнали только по последней строке лога. Отметка и застой очереди
+    берутся из базы, поэтому доступны и тогда, когда сам процесс не отвечает.
+    """
+
+    async def test_health_reports_queue_stall(self):
+        await db.save_inbound(self.pool, 1, 70, "ответ, который никто не забрал", project=None)
+
+        payload = await (await self.client.get("/healthz")).json()
+
+        self.assertEqual(payload["pending_answers"], 1)
+        self.assertIsNotNone(payload["oldest_pending_sec"])
+
+    async def test_stalled_queue_does_not_change_status(self):
+        # На /healthz завязан перезапуск контейнера, а неразобранный ответ
+        # перезапуском не лечится: его должен забрать тот, кто спрашивал.
+        await db.save_inbound(self.pool, 1, 71, "ответ", project=None)
+
+        response = await self.client.get("/healthz")
+        payload = await response.json()
+
+        self.assertEqual(payload["status"], "polling down")  # опрос в тесте не запускался
+        self.assertNotIn("pending", payload["status"])
+
+    async def test_health_reports_last_poll_from_database(self):
+        await db.mark_heartbeat(self.pool, "poll")
+
+        payload = await (await self.client.get("/healthz")).json()
+
+        self.assertIsNotNone(payload["last_poll_ok_at"])
+
+    async def test_last_poll_is_absent_until_polling_happened(self):
+        payload = await (await self.client.get("/healthz")).json()
+
+        self.assertIsNone(payload["last_poll_ok_at"])
 
 
 class TestFullRoundTrip(ApiTestCase):

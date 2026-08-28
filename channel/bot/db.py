@@ -51,6 +51,17 @@ create index if not exists inbound_pending_idx
 -- обновления на первом же запросе.
 alter table inbound add column if not exists project text;
 
+-- Отметка последней удачной выборки Telegram — в базе, а не только в памяти
+-- процесса. Причина: 19.08.2026 процесс завис целиком, и /healthz не отдал ни
+-- 503, ни 200 — он не отдал ничего. Внутренняя проверка живости по построению не
+-- может сообщить о таком отказе, а вот отметка в базе переживает зависание
+-- процесса: по ней внешний наблюдатель видит, КОГДА канал перестал работать, даже
+-- если спросить сам канал уже нельзя.
+create table if not exists heartbeat (
+    name         text        primary key,
+    happened_at  timestamptz not null
+);
+
 -- Поиск проекта по id отправленного сообщения — на каждый ответ владельца.
 -- Без индекса это перебор всей переписки; она растёт и не чистится.
 create index if not exists outbound_message_ids_idx
@@ -221,6 +232,45 @@ async def ack_inbound(
     # asyncpg отдаёт строку вида "UPDATE 3".
     touched = int(result.split()[-1]) if result else 0
     return touched, foreign
+
+
+async def mark_heartbeat(pool: asyncpg.Pool, name: str = "poll") -> None:
+    """Отмечает, что нечто живое произошло прямо сейчас.
+
+    Пишется в базу намеренно: значение в памяти исчезает вместе с процессом,
+    а нужно оно как раз тогда, когда процесс не отвечает.
+    """
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "insert into heartbeat (name, happened_at) values ($1, now())"
+            " on conflict (name) do update set happened_at = now()",
+            name,
+        )
+
+
+async def last_heartbeat(pool: asyncpg.Pool, name: str = "poll") -> Optional[str]:
+    """Когда отметка ставилась в последний раз. None — не ставилась ни разу."""
+    async with pool.acquire() as conn:
+        at = await conn.fetchval("select happened_at from heartbeat where name = $1", name)
+    return at.isoformat() if at is not None else None
+
+
+async def pending_stats(pool: asyncpg.Pool) -> Tuple[int, Optional[float]]:
+    """(сколько ответов не разобрано, возраст самого старого в секундах).
+
+    Нужно проверке живости: ответ владельца, который никто не забрал, — это
+    молчаливый отказ. Владелец видит доставку, система ответа не получает, и
+    заметить это можно только по числу и возрасту. Проверено: три ответа пролежали
+    в очереди четыре и пять дней, и ни один участник об этом не сообщил.
+    """
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "select count(*) as n, extract(epoch from now() - min(received_at)) as age"
+            " from inbound where acked_at is null"
+        )
+    n = int(row["n"] or 0)
+    age = float(row["age"]) if row["age"] is not None else None
+    return n, (round(age, 1) if age is not None else None)
 
 
 async def db_alive(pool: asyncpg.Pool) -> bool:

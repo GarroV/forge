@@ -50,7 +50,7 @@ class ChannelDbTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.pool = await asyncpg.create_pool(DSN, min_size=1, max_size=2)
         async with self.pool.acquire() as conn:
-            await conn.execute("drop table if exists inbound, outbound")
+            await conn.execute("drop table if exists inbound, outbound, heartbeat")
         await self.pool.close()
         self.pool = await db.connect(DSN)
 
@@ -222,7 +222,7 @@ class TestMigration(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         pool = await asyncpg.create_pool(DSN, min_size=1, max_size=2)
         async with pool.acquire() as conn:
-            await conn.execute("drop table if exists inbound, outbound")
+            await conn.execute("drop table if exists inbound, outbound, heartbeat")
             await conn.execute(LEGACY_SCHEMA)
             await conn.execute(
                 "insert into inbound (chat_id, tg_message_id, body) values (1, 30, 'старый ответ')"
@@ -253,6 +253,75 @@ class TestMigration(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(pending), 1)
         finally:
             await pool.close()
+
+
+class TestHeartbeat(ChannelDbTestCase):
+    """Отметка живости переживает процесс — ради этого она и в базе.
+
+    Повод: канал завис целиком, и `/healthz` не отдал ни 503, ни 200. Значение в
+    памяти процесса в этот момент недоступно, а строка в базе — доступна.
+    """
+
+    async def test_no_heartbeat_until_marked(self):
+        self.assertIsNone(await db.last_heartbeat(self.pool, "poll"))
+
+    async def test_mark_records_the_moment(self):
+        await db.mark_heartbeat(self.pool, "poll")
+
+        self.assertIsNotNone(await db.last_heartbeat(self.pool, "poll"))
+
+    async def test_repeated_mark_moves_the_same_row_forward(self):
+        # Иначе таблица растёт на каждую итерацию опроса, а нужна одна строка.
+        await db.mark_heartbeat(self.pool, "poll")
+        first = await db.last_heartbeat(self.pool, "poll")
+        await db.mark_heartbeat(self.pool, "poll")
+        second = await db.last_heartbeat(self.pool, "poll")
+
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetchval("select count(*) from heartbeat")
+        self.assertEqual(rows, 1)
+        self.assertGreaterEqual(second, first)
+
+    async def test_names_do_not_collide(self):
+        await db.mark_heartbeat(self.pool, "poll")
+
+        self.assertIsNone(await db.last_heartbeat(self.pool, "delivery"))
+
+
+class TestPendingStats(ChannelDbTestCase):
+    """Застой очереди — молчаливый отказ: владелец видит доставку, система не
+    видит ответа. Три ответа так пролежали четыре и пять дней."""
+
+    async def test_empty_queue_has_no_age(self):
+        self.assertEqual(await db.pending_stats(self.pool), (0, None))
+
+    async def test_counts_unacked_and_reports_age(self):
+        await db.save_inbound(self.pool, 1, 30, "ответ", project="shop")
+
+        count, age = await db.pending_stats(self.pool)
+
+        self.assertEqual(count, 1)
+        self.assertIsNotNone(age)
+        self.assertGreaterEqual(age, 0)
+
+    async def test_acked_answers_are_not_counted(self):
+        row_id = await db.save_inbound(self.pool, 1, 31, "ответ", project="shop")
+        await db.save_inbound(self.pool, 1, 32, "второй", project="shop")
+        await db.ack_inbound(self.pool, [row_id], project="shop")
+
+        count, _ = await db.pending_stats(self.pool)
+
+        self.assertEqual(count, 1)
+
+    async def test_counts_answers_of_every_project(self):
+        # Проверка живости смотрит на канал целиком, а не от лица проекта:
+        # застрявший ответ чужого проекта — такой же застой.
+        await db.save_inbound(self.pool, 1, 33, "ответ shop", project="shop")
+        await db.save_inbound(self.pool, 1, 34, "ответ blog", project="blog")
+
+        count, _ = await db.pending_stats(self.pool)
+
+        self.assertEqual(count, 2)
 
 
 if __name__ == "__main__":

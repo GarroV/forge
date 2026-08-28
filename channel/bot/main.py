@@ -232,7 +232,8 @@ async def handle_health(request: web.Request) -> web.Response:
     `ok` — только когда база ответила **и** опрос действительно живой.
     """
     state: PollingState = request.app["polling"]
-    alive = await db.db_alive(request.app["pool"])
+    pool = request.app["pool"]
+    alive = await db.db_alive(pool)
     age = state.age()
 
     if not alive:
@@ -242,6 +243,19 @@ async def handle_health(request: web.Request) -> web.Response:
     else:
         status = "ok"
 
+    # Отметка живости и застой очереди — из базы, а не из памяти. База отвечает,
+    # даже когда процесс завис, поэтому эти два поля переживают тот отказ, о
+    # котором сам процесс сообщить не может.
+    last_poll_at = None
+    pending = None
+    oldest_pending_sec = None
+    if alive:
+        try:
+            last_poll_at = await db.last_heartbeat(pool, "poll")
+            pending, oldest_pending_sec = await db.pending_stats(pool)
+        except Exception as error:  # база жива, но запрос не прошёл
+            log.warning("не удалось прочитать состояние очереди: %s", error)
+
     payload = {
         "status": status,
         "polling": state.healthy(),
@@ -249,6 +263,15 @@ async def handle_health(request: web.Request) -> web.Response:
         "last_update_fetch_sec_ago": None if age is None else round(age, 1),
         "conflicts_in_a_row": state.conflicts,
         "last_error": state.last_error,
+        # Переживает перезапуск и зависание процесса: по нему видно, когда канал
+        # перестал работать, даже если спросить его самого уже нельзя.
+        "last_poll_ok_at": last_poll_at,
+        # Застой очереди статус НЕ меняет намеренно: на `/healthz` завязан
+        # перезапуск контейнера, а неразобранный ответ лечится не перезапуском —
+        # его должен забрать тот, кто спрашивал. Здесь это факт для человека и
+        # для сводки, а не повод убить процесс.
+        "pending_answers": pending,
+        "oldest_pending_sec": oldest_pending_sec,
     }
     return web.json_response(payload, status=200 if status == "ok" else 503)
 
@@ -291,7 +314,7 @@ def build_dispatcher(pool, owner: str) -> Dispatcher:
 # ─── Опрос Telegram ───────────────────────────────────────────────────────────
 
 
-async def poll_updates(bot: Bot, dp: Dispatcher, state: PollingState, owner: str) -> None:
+async def poll_updates(bot: Bot, dp: Dispatcher, state: PollingState, owner: str, pool) -> None:
     """Свой цикл опроса вместо `dp.start_polling`.
 
     Причина не в недоверии к aiogram: его цикл сам переживает конфликты и
@@ -304,6 +327,12 @@ async def poll_updates(bot: Bot, dp: Dispatcher, state: PollingState, owner: str
     он может, даже когда не может слушать.
     """
     offset: Optional[int] = None
+    #: Отметка живости пишется в базу не на каждой итерации: опрос крутится
+    #: непрерывно, и запись на каждый круг — лишняя нагрузка без пользы. Раз в
+    #: полминуты достаточно, чтобы отличить «канал работал минуту назад» от
+    #: «канал молчит семь часов» — а именно столько длилось зависание.
+    persist_every = 30.0
+    last_persist: Optional[float] = None
 
     while True:
         try:
@@ -337,6 +366,17 @@ async def poll_updates(bot: Bot, dp: Dispatcher, state: PollingState, owner: str
             log.warning("выборка обновлений не удалась: %s", error)
             await asyncio.sleep(3)
             continue
+
+        now = asyncio.get_running_loop().time()
+        if last_persist is None or now - last_persist >= persist_every:
+            try:
+                await db.mark_heartbeat(pool, "poll")
+                last_persist = now
+            except Exception as error:
+                # Отметка живости не должна ронять опрос: она диагностика, а не
+                # работа канала. Молчать о ней тоже нельзя — иначе пропадёт
+                # незаметно, и внешний наблюдатель решит, что канал завис.
+                log.warning("не удалось записать отметку живости: %s", error)
 
         if state.mark_ok():
             log.info("опрос восстановлен")
@@ -417,7 +457,7 @@ async def main() -> None:
     log.info("HTTP-интерфейс слушает порт %s", env["port"])
 
     try:
-        await poll_updates(bot, dp, state, env["owner"])
+        await poll_updates(bot, dp, state, env["owner"], pool)
     finally:
         await runner.cleanup()
         await bot.session.close()

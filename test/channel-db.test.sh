@@ -55,7 +55,7 @@ echo "$output" | tail -3
 
 # Пол по числу выполненных проверок — та же защита, что в channel.test.sh:
 # «Ran 0 tests» тоже даёт OK и нулевой код возврата.
-MIN_CHECKS=30
+MIN_CHECKS=42
 ran="$(printf '%s' "$output" | grep -oE '^Ran [0-9]+ test' | tail -1 | awk '{print $2}')"
 [[ -n "$ran" ]] || { echo "FAIL: в выводе прогона нет строки «Ran N tests» — состав прогона неизвестен"; exit 1; }
 (( ran >= MIN_CHECKS )) || {
