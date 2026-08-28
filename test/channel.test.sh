@@ -45,4 +45,19 @@ ran="$(printf '%s' "$output" | grep -oE '^Ran [0-9]+ test' | tail -1 | awk '{pri
   exit 1
 }
 
+# Мастер подключения: он и есть обычный способ поставить канал, поэтому обязан
+# существовать, быть синтаксически целым и уметь проверять предусловия, ничего не
+# меняя. Полный прогон здесь недоступен — он требует настоящего бота и правит
+# файлы в домашнем каталоге; проверяется то, что проверяемо без побочных эффектов.
+SETUP="$(dirname "$BOT_DIR")/setup.sh"
+[[ -f "$SETUP" ]] || { echo "FAIL: нет мастера подключения канала: channel/setup.sh"; exit 1; }
+bash -n "$SETUP" || { echo "FAIL: channel/setup.sh не разбирается как shell-скрипт"; exit 1; }
+grep -qF -- '--check' "$SETUP" || { echo "FAIL: у мастера нет режима --check (проверить, ничего не меняя)"; exit 1; }
+for marker in 'getUpdates' 'chmod 600' '/notify'; do
+  grep -qF -- "$marker" "$SETUP" || {
+    echo "FAIL: мастер потерял шаг: $marker (chat id сам, права на секрет, сквозная проверка)"
+    exit 1
+  }
+done
+
 echo "PASS ($ran проверок)"
