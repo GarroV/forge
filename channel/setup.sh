@@ -31,6 +31,16 @@ CHECK_ONLY=0
 say() { printf '%s\n' "$*"; }
 die() { printf 'ОСТАНОВЛЕНО: %s\n' "$*" >&2; exit 1; }
 
+# Секрет, переданный аргументом, виден в списке процессов любому пользователю
+# машины: `ps` показывает argv целиком. Токен бота в адресе — это тот же секрет,
+# просто внутри URL. Поэтому и адрес, и заголовок уходят в curl через --config со
+# стандартного ввода: конфиг читается из потока и в argv не попадает.
+curl_hidden() {
+  # $1 — строки конфига (адрес, заголовки), остальное — обычные аргументы curl.
+  local config="$1"; shift
+  printf '%s\n' "$config" | curl -fsS --config - "$@"
+}
+
 # ─── Предусловия ─────────────────────────────────────────────────────────────
 command -v docker >/dev/null 2>&1 || die "нет docker — канал живёт в контейнерах"
 docker info >/dev/null 2>&1 || die "docker установлен, но демон не отвечает: запусти Docker и повтори"
@@ -58,7 +68,7 @@ read -r -s -p "Вставь токен (ввод не отображается):
 say ""
 [[ -n "$BOT_TOKEN" ]] || die "пустой токен"
 
-bot_name="$(curl -fsS --max-time 15 "https://api.telegram.org/bot${BOT_TOKEN}/getMe" \
+bot_name="$(curl_hidden "url = \"https://api.telegram.org/bot${BOT_TOKEN}/getMe\"" --max-time 15 \
   | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["result"]["username"] if d.get("ok") else "")' \
   || true)"
 [[ -n "$bot_name" ]] || die "Telegram не принял токен. Проверь, что скопирован целиком, и повтори."
@@ -67,26 +77,51 @@ say "Бот принят: @${bot_name}"
 # ─── Chat id мастер определяет сам ───────────────────────────────────────────
 # Раньше это делалось через стороннего бота и чтение логов. Здесь — чтением
 # первого же обновления: человеку остаётся написать своему боту одно слово.
+# Кто угодно может найти бота по имени и написать ему первым — и стал бы
+# владельцем канала, в который уходят куски спеки, решения и имена секретов.
+# Поэтому принимается не первое попавшееся сообщение, а ровно одно слово, которое
+# мастер сейчас придумает. И только присланное ПОСЛЕ этой секунды: Telegram
+# держит непрочитанные обновления около суток, и старое сообщение постороннего
+# иначе подошло бы.
+PAIR_CODE="forge-$(python3 -c 'import secrets; print(secrets.token_hex(3))')"
+STARTED_AT="$(date +%s)"
+
+# Старую очередь сначала вычитываем и выбрасываем: она не участвует в сверке.
+curl_hidden "url = \"https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?offset=-1\"" --max-time 10 >/dev/null 2>&1 || true
+
 say ""
-say "Шаг 2. Открой @${bot_name} в Telegram и отправь ему любое сообщение."
-say "       Жду до двух минут…"
+say "Шаг 2. Открой @${bot_name} в Telegram и отправь ему ровно это слово:"
+say ""
+say "           ${PAIR_CODE}"
+say ""
+say "       Слово одноразовое: по нему мастер отличит тебя от постороннего,"
+say "       который мог написать боту раньше. Жду до двух минут…"
 
 OWNER_CHAT_ID=""
 for _ in $(seq 1 24); do
-  OWNER_CHAT_ID="$(curl -fsS --max-time 10 "https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?timeout=5" \
-    | python3 -c '
-import json, sys
+  OWNER_CHAT_ID="$(curl_hidden "url = \"https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?timeout=5\"" --max-time 10 \
+    | PAIR_CODE="$PAIR_CODE" STARTED_AT="$STARTED_AT" python3 -c '
+import json, os, sys
+code = os.environ["PAIR_CODE"]
+started = int(os.environ["STARTED_AT"])
 d = json.load(sys.stdin)
 for u in d.get("result", []):
     m = u.get("message") or u.get("edited_message")
-    if m and m.get("chat", {}).get("id"):
-        print(m["chat"]["id"]); break
+    if not m:
+        continue
+    if int(m.get("date", 0)) < started:
+        continue                      # сообщение старше мастера — чужое или прошлое
+    if code not in (m.get("text") or ""):
+        continue                      # не то слово — писал не тот, кому мастер его показал
+    chat = m.get("chat", {}).get("id")
+    if chat:
+        print(chat); break
 ' || true)"
   [[ -n "$OWNER_CHAT_ID" ]] && break
   sleep 5
 done
-[[ -n "$OWNER_CHAT_ID" ]] || die "сообщение так и не пришло. Убедись, что писал именно @${bot_name}, и запусти мастер снова."
-say "Твой chat id определён."
+[[ -n "$OWNER_CHAT_ID" ]] || die "слово так и не пришло. Убедись, что писал именно @${bot_name} и именно ${PAIR_CODE}, и запусти мастер снова."
+say "Ты опознан по слову — chat id определён."
 
 # ─── Секрет и файлы настроек ─────────────────────────────────────────────────
 FORGE_SECRET="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
@@ -127,8 +162,9 @@ done
 # ─── Сквозная проверка: настоящее сообщение, а не «контейнер запущен» ────────
 say ""
 say "Шаг 4. Проверяю сквозняком — отправляю тебе сообщение."
-delivered="$(curl -fsS --max-time 15 -X POST "http://localhost:${PORT}/notify" \
-  -H "Authorization: Bearer ${FORGE_SECRET}" -H 'content-type: application/json' \
+delivered="$(curl_hidden "url = \"http://localhost:${PORT}/notify\"
+header = \"Authorization: Bearer ${FORGE_SECRET}\"
+header = \"content-type: application/json\"" --max-time 15 -X POST \
   -d '{"kind":"block","project":"channel","text":"Канал подключён. Это проверочное сообщение мастера настройки."}' \
   | python3 -c 'import json,sys; print("ok" if json.load(sys.stdin).get("ok") else "")' || true)"
 [[ "$delivered" == "ok" ]] || die "канал поднят, но сообщение не ушло. Проверь /healthz и логи бота."

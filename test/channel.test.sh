@@ -53,9 +53,13 @@ SETUP="$(dirname "$BOT_DIR")/setup.sh"
 [[ -f "$SETUP" ]] || { echo "FAIL: нет мастера подключения канала: channel/setup.sh"; exit 1; }
 bash -n "$SETUP" || { echo "FAIL: channel/setup.sh не разбирается как shell-скрипт"; exit 1; }
 grep -qF -- '--check' "$SETUP" || { echo "FAIL: у мастера нет режима --check (проверить, ничего не меняя)"; exit 1; }
-for marker in 'getUpdates' 'chmod 600' '/notify'; do
+for marker in 'getUpdates' 'chmod 600' '/notify' 'curl_hidden' 'PAIR_CODE' 'STARTED_AT'; do
   grep -qF -- "$marker" "$SETUP" || {
-    echo "FAIL: мастер потерял шаг: $marker (chat id сам, права на секрет, сквозная проверка)"
+    echo "FAIL: мастер потерял шаг: ${marker}"
+    echo "      Несущее: chat id определяется сам, но по одноразовому слову и только из свежих"
+    echo "      обновлений (иначе владельцем канала станет первый посторонний, написавший боту);"
+    echo "      секреты уходят в curl через --config, а не argv (ps показывает argv всем);"
+    echo "      права на файл секрета 600; проверка сквозная, настоящим сообщением."
     exit 1
   }
 done
