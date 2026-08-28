@@ -95,6 +95,7 @@ declare -a BUILD_RULES=(
   'картой соответствия'            # модуль эталона без блока стройка не увидит
   'Проверь сам гейт порчей'        # зелёный гейт может честно считать не ту копию
   'копией, а не симлинком'         # симлинк на данные ломает относительные пути молча
+  'Зови объявленную команду'       # приёмка не собирает команду прогона сама
 )
 build_skill="$SKILLS_DIR/forge-build/SKILL.md"
 if [[ -f "$build_skill" ]]; then
@@ -112,7 +113,8 @@ fi
 # который не отличает двести выполненных проверок от нуля зарегистрированных.
 for pair in "forge-new|отчёта прогона и путь к нему" "forge-quality-gates|формат машинного отчёта прогона" \
             "forge-new|caffeinate" "forge-status|граф отстал от того, что" "forge-status|Показывай, но не помечай" \
-            "forge-new|экранный эталон" "forge-new|Эталон пришёл позже"; do
+            "forge-new|экранный эталон" "forge-new|Эталон пришёл позже" \
+            "forge-new|scripts/check" "forge-new|core.hooksPath"; do
   IFS='|' read -r skill_name marker <<< "$pair"
   target="$SKILLS_DIR/$skill_name/SKILL.md"
   [[ -f "$target" ]] || continue
