@@ -147,6 +147,73 @@ check_fixture() {
     fi
   done
 
+  # Проверка 7: цикл в зависимостях. Висячая ссылка ловится проверкой 4, но граф
+  # может быть ссылочно целым и всё равно нерабочим: задачи, замкнутые в кольцо,
+  # не станут доступными никогда, а диспетчер будет честно сообщать «нечего
+  # брать». Снаружи это выглядит как законченная стройка.
+  local remaining resolved progress_made node node_deps dep_ok
+  remaining="$task_ids"
+  while [[ -n "$remaining" ]]; do
+    progress_made=0
+    resolved=""
+    while IFS= read -r node; do
+      [[ -z "$node" ]] && continue
+      node_deps="$(grep -E "^\| *${node} *\|" "$TASKS" | awk -F'|' '{print $4}' | xargs || true)"
+      dep_ok=1
+      if [[ -n "$node_deps" && "$node_deps" != "—" ]]; then
+        IFS=',' read -ra deps <<< "$node_deps"
+        for dep in "${deps[@]}"; do
+          dep="$(echo "$dep" | xargs)"
+          [[ -z "$dep" ]] && continue
+          if id_in_list "$dep" "$remaining"; then dep_ok=0; fi
+        done
+      fi
+      if (( dep_ok == 1 )); then progress_made=1; else resolved="$resolved$node\n"; fi
+    done <<< "$remaining"
+    if (( progress_made == 0 )); then
+      echo "FAIL: [$FIXTURE] tasks.md: зависимости замкнуты в цикл, эти задачи не станут доступными никогда:"
+      echo "$remaining" | tr '\n' ' '
+      echo
+      exit 1
+    fi
+    remaining="$(printf '%b' "$resolved" | sed '/^$/d')"
+  done
+
+  # Проверки 8 и 9: состав блоков в графе и в пакете документов обязан совпадать.
+  # Источник истины о том, какие блоки есть, — файлы описаний `docs/forge/blocks/*.md`.
+  # Оба расхождения тихие и оба измерены на живом прогоне: блок, объявленный без
+  # единой задачи, делает заявленную цель недостижимой (диспетчеру нечего раздать,
+  # а граф выглядит целым), а блок, который строится без описания в пакете,
+  # диспетчер не увидит вовсе — он раздаёт работу по плану. На одном прогоне план
+  # знал девять блоков, а журналы велись по двадцати трём.
+  local BLOCKS_DIR="$FIXTURE/docs/forge/blocks"
+  if [[ ! -d "$BLOCKS_DIR" ]]; then
+    echo "NOTE: [$FIXTURE] нет docs/forge/blocks/ — состав блоков не проверяется"
+  else
+    local declared graph_blocks blk
+    declared="$(for f in "$BLOCKS_DIR"/*.md; do [[ -e "$f" ]] || continue; basename "$f" .md; done | sort -u)"
+    graph_blocks="$(grep -E '^\| *T[0-9]{3} *\|' "$TASKS" \
+      | awk -F'|' '{gsub(/^ +| +$/,"",$3); if ($3 != "chores" && $3 != "") print $3}' | sort -u)"
+
+    while IFS= read -r blk; do
+      [[ -z "$blk" ]] && continue
+      grep -qxF "$blk" <<< "$graph_blocks" || {
+        echo "FAIL: [$FIXTURE] блок $blk объявлен в docs/forge/blocks/, но в графе нет ни одной его задачи"
+        echo "      Цель, ради которой он заведён, недостижима: диспетчеру нечего раздать."
+        exit 1
+      }
+    done <<< "$declared"
+
+    while IFS= read -r blk; do
+      [[ -z "$blk" ]] && continue
+      grep -qxF "$blk" <<< "$declared" || {
+        echo "FAIL: [$FIXTURE] блок $blk есть в графе задач, но не объявлен в docs/forge/blocks/"
+        echo "      Диспетчер раздаёт работу по пакету документов — этот блок он не увидит."
+        exit 1
+      }
+    done <<< "$graph_blocks"
+  fi
+
   echo "PASS: $FIXTURE"
 }
 
