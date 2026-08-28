@@ -98,6 +98,7 @@ declare -a BUILD_RULES=(
   'Зови объявленную команду'       # приёмка не собирает команду прогона сама
   'пригодность пакета'             # стройка не идёт по пакету, по которому нечего строить
   'покажи это владельцу'           # блок, изменивший видимое человеку, показывается картинкой
+  'спроси проверку контракта'      # блоки идут параллельно и не видят друг друга
 )
 build_skill="$SKILLS_DIR/forge-build/SKILL.md"
 if [[ -f "$build_skill" ]]; then
@@ -116,7 +117,8 @@ fi
 for pair in "forge-new|отчёта прогона и путь к нему" "forge-quality-gates|формат машинного отчёта прогона" \
             "forge-new|caffeinate" "forge-status|граф отстал от того, что" "forge-status|Показывай, но не помечай" \
             "forge-new|экранный эталон" "forge-new|Эталон пришёл позже" \
-            "forge-new|scripts/check" "forge-new|core.hooksPath" "forge-new|более позднего этапа" "forge-new|package.test.sh"; do
+            "forge-new|scripts/check" "forge-new|core.hooksPath" \
+            "forge-deploy|Смоук обязан остаться повторяемым" "forge-deploy|запиши способ отката" "forge-new|более позднего этапа" "forge-new|package.test.sh"; do
   IFS='|' read -r skill_name marker <<< "$pair"
   target="$SKILLS_DIR/$skill_name/SKILL.md"
   [[ -f "$target" ]] || continue
