@@ -114,7 +114,7 @@ fi
 for pair in "forge-new|отчёта прогона и путь к нему" "forge-quality-gates|формат машинного отчёта прогона" \
             "forge-new|caffeinate" "forge-status|граф отстал от того, что" "forge-status|Показывай, но не помечай" \
             "forge-new|экранный эталон" "forge-new|Эталон пришёл позже" \
-            "forge-new|scripts/check" "forge-new|core.hooksPath"; do
+            "forge-new|scripts/check" "forge-new|core.hooksPath" "forge-new|более позднего этапа"; do
   IFS='|' read -r skill_name marker <<< "$pair"
   target="$SKILLS_DIR/$skill_name/SKILL.md"
   [[ -f "$target" ]] || continue

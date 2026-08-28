@@ -33,12 +33,12 @@ check_fixture() {
   local row qid blocks_field refs ref
   while IFS= read -r row; do
     [[ -z "$row" ]] && continue
-    qid="$(awk -F'|' '{print $2}' <<< "$row" | xargs)"
-    blocks_field="$(awk -F'|' '{print $4}' <<< "$row" | xargs)"
+    qid="$(awk -F'|' '{print $2}' <<< "$row" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+    blocks_field="$(awk -F'|' '{print $4}' <<< "$row" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
     [[ -z "$blocks_field" || "$blocks_field" == "—" ]] && continue
     IFS=',' read -ra refs <<< "$blocks_field"
     for ref in "${refs[@]}"; do
-      ref="$(echo "$ref" | xargs)"
+      ref="$(echo "$ref" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
       [[ -z "$ref" ]] && continue
       if ! id_in_list "$ref" "$task_ids"; then
         echo "FAIL: [$FIXTURE] questions.md ($qid): в колонке «блокирует» указана несуществующая задача $ref"
@@ -72,12 +72,12 @@ check_fixture() {
   local tid deps_field deps dep
   while IFS= read -r row; do
     [[ -z "$row" ]] && continue
-    tid="$(awk -F'|' '{print $2}' <<< "$row" | xargs)"
-    deps_field="$(awk -F'|' '{print $4}' <<< "$row" | xargs)"
+    tid="$(awk -F'|' '{print $2}' <<< "$row" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+    deps_field="$(awk -F'|' '{print $4}' <<< "$row" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
     [[ -z "$deps_field" || "$deps_field" == "—" ]] && continue
     IFS=',' read -ra deps <<< "$deps_field"
     for dep in "${deps[@]}"; do
-      dep="$(echo "$dep" | xargs)"
+      dep="$(echo "$dep" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
       [[ -z "$dep" ]] && continue
       if ! id_in_list "$dep" "$task_ids"; then
         echo "FAIL: [$FIXTURE] tasks.md ($tid): в колонке «зависит от» указана несуществующая задача $dep"
@@ -164,12 +164,12 @@ check_fixture() {
     resolved=""
     while IFS= read -r node; do
       [[ -z "$node" ]] && continue
-      node_deps="$(grep -E "^\| *${node} *\|" "$TASKS" | awk -F'|' '{print $4}' | xargs || true)"
+      node_deps="$(grep -E "^\| *${node} *\|" "$TASKS" | awk -F'|' '{print $4}' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' || true)"
       dep_ok=1
       if [[ -n "$node_deps" && "$node_deps" != "—" ]]; then
         IFS=',' read -ra deps <<< "$node_deps"
         for dep in "${deps[@]}"; do
-          dep="$(echo "$dep" | xargs)"
+          dep="$(echo "$dep" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
           [[ -z "$dep" ]] && continue
           if id_in_list "$dep" "$remaining"; then dep_ok=0; fi
         done
@@ -230,7 +230,7 @@ check_fixture() {
   local drow did dwho dcols
   while IFS= read -r drow; do
     [[ -z "$drow" ]] && continue
-    did="$(awk -F'|' '{print $2}' <<< "$drow" | xargs)"
+    did="$(awk -F'|' '{print $2}' <<< "$drow" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
     # Столбцов между внешними разделителями ровно пять: id, дата, решение, почему, кто.
     dcols="$(awk -F'|' '{print NF-2}' <<< "$drow")"
     if [[ "$dcols" != "5" ]]; then
@@ -238,17 +238,60 @@ check_fixture() {
       echo "      Формат объявлен неизменным — его парсят forge-build и forge-status."
       exit 1
     fi
-    dwho="$(awk -F'|' '{print $6}' <<< "$drow" | xargs)"
+    dwho="$(awk -F'|' '{print $6}' <<< "$drow" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
     if [[ "$dwho" != "owner" && "$dwho" != "auto" ]]; then
       echo "FAIL: [$FIXTURE] decisions.md ($did): в колонке «кто» значение «${dwho}», допустимы owner и auto"
       echo "      Чаще всего это сдвиг колонок, а не опечатка: сверь порядок полей со строкой заголовка."
       exit 1
     fi
-    if ! awk -F'|' '{print $3}' <<< "$drow" | xargs | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
+    if ! awk -F'|' '{print $3}' <<< "$drow" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
       echo "FAIL: [$FIXTURE] decisions.md ($did): во второй колонке не дата в формате ГГГГ-ММ-ДД"
       exit 1
     fi
   done < <(grep -E '^\| *D[0-9]{3} *\|' "$DECISIONS" || true)
+
+  # Проверка 11: зависимость не уходит вперёд по этапам. Граф бывает ссылочно
+  # целым, ациклическим и при этом недостижимым: цель первой очереди упирается в
+  # задачу из четвёртой. Проверка целостности этого не видела, и на живом прогоне
+  # ловил такое человек, державший очереди в голове. Задачи без этапа («—» или
+  # пусто) в проверке не участвуют: правило введено позже графов, которые уже
+  # строились, и валить их задним числом нельзя.
+  # Колонки «этап» в файле может не быть вовсе: правило введено позже графов,
+  # которые уже строились. Смотрим заголовок таблицы, а не считаем поля в строках:
+  # в тексте задачи встречается `|`, и подсчёт полей дал бы ложное срабатывание —
+  # на живом проекте именно так проверка и покраснела на ровном месте.
+  local srow sid sstage dep_stage
+  if ! grep -qE '^\| *id *\|.*\| *этап *\|' "$TASKS"; then
+    echo "NOTE: [$FIXTURE] в tasks.md нет колонки «этап» — порядок этапов не проверяется"
+    echo "PASS: $FIXTURE"
+    return 0
+  fi
+  while IFS= read -r srow; do
+    [[ -z "$srow" ]] && continue
+    sstage="$(awk -F'|' '{print $8}' <<< "$srow" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+    [[ -z "$sstage" || "$sstage" == "—" ]] && continue
+    [[ "$sstage" =~ ^[0-9]+$ ]] || {
+      sid="$(awk -F'|' '{print $2}' <<< "$srow" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+      echo "FAIL: [$FIXTURE] tasks.md ($sid): в колонке «этап» значение «${sstage}», нужен номер или «—»"
+      exit 1
+    }
+    sid="$(awk -F'|' '{print $2}' <<< "$srow" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+    deps_field="$(awk -F'|' '{print $4}' <<< "$srow" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+    [[ -z "$deps_field" || "$deps_field" == "—" ]] && continue
+    IFS=',' read -ra deps <<< "$deps_field"
+    for dep in "${deps[@]}"; do
+      dep="$(echo "$dep" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+      [[ -z "$dep" ]] && continue
+      dep_stage="$(grep -E "^\| *${dep} *\|" "$TASKS" | awk -F'|' '{print $8}' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' || true)"
+      [[ -z "$dep_stage" || "$dep_stage" == "—" ]] && continue
+      [[ "$dep_stage" =~ ^[0-9]+$ ]] || continue
+      if (( dep_stage > sstage )); then
+        echo "FAIL: [$FIXTURE] tasks.md ($sid, этап $sstage): зависит от $dep с более поздним этапом $dep_stage"
+        echo "      Цель этого этапа недостижима: она ждёт работы, запланированной позже."
+        exit 1
+      fi
+    done
+  done < <(grep -E '^\| *T[0-9]{3} *\|' "$TASKS" || true)
 
   echo "PASS: $FIXTURE"
 }
