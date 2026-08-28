@@ -105,4 +105,34 @@ for doc in "$README" "$STATUS" "$OVERVIEW"; do
   done < <(grep -inE 'плагин[а-я]* +telegram|telegram-плагин' "$doc" | cut -c1-160 || true)
 done
 
+# ─── 6. Ловушка bash 3.2: переменная вплотную к не-ASCII символу ─────────────
+# `«$rule»` разбирается как имя переменной вместе с первым байтом кавычки, и
+# прогон умирает с «unbound variable» посреди работы — то есть проверка не
+# сообщает о находке, а обрывается. За одну сессию это случилось трижды в трёх
+# разных файлах, каждый раз ловилось только негативным прогоном. Пишется
+# `${rule}`, и тогда граница имени явная.
+# Проверяется на python: классы байтов в BSD grep работают иначе, и первая версия
+# этой проверки давала ложные срабатывания на каждой строке со скобкой.
+bad_interp="$(python3 - "$ROOT" <<'PYCHECK' || true
+import glob, io, os, re, sys
+pat = re.compile(r'\$[A-Za-z_][A-Za-z0-9_]*(?=[^\x00-\x7F])')
+hits = []
+for f in sorted(glob.glob(os.path.join(sys.argv[1], "test", "*.test.sh"))):
+    for i, line in enumerate(io.open(f, encoding="utf-8"), 1):
+        # Комментарий не исполняется, ловушка в нём безвредна — и в одном из них
+        # эта самая ловушка приведена как пример того, чего писать нельзя.
+        if line.lstrip().startswith("#"):
+            continue
+        if pat.search(line):
+            hits.append("%s:%d:%s" % (os.path.basename(f), i, line.rstrip()[:100]))
+print("\n".join(hits))
+PYCHECK
+)"
+[[ -z "$bad_interp" ]] || {
+  echo "FAIL: переменная вплотную к не-ASCII символу — под bash 3.2 это «unbound variable»:"
+  echo "$bad_interp" | head -5
+  echo "      Пиши \${имя} вместо \$имя, когда следом идёт кириллица или «кавычка»."
+  exit 1
+}
+
 echo "PASS"

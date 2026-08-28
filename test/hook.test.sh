@@ -63,7 +63,7 @@ expect_release() {
     echo "FAIL: $1 — сторож отпустил ход из-за сбоя, а не по решению; stderr: $HOOK_STDERR"; exit 1; }
   if [[ -n "$want" ]]; then
     grep -q "$want" <<<"$HOOK_STDERR" || {
-      echo "FAIL: $1 — ожидалась причина «$want», получено: $HOOK_STDERR"; exit 1; }
+      echo "FAIL: $1 — ожидалась причина «${want}», получено: $HOOK_STDERR"; exit 1; }
   fi
 }
 expect_hold() {
