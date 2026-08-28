@@ -220,6 +220,36 @@ check_fixture() {
     done <<< "$graph_blocks"
   fi
 
+  # Проверка 10: строки решений соответствуют объявленному формату. Файл открыт
+  # предупреждением «формат строк не менять — его парсят forge-build и
+  # forge-status», но до сих пор ничто это не проверяло. Живой случай: запись
+  # сделана по схеме (id, дата, кто, решение, задачи) — на колонку больше
+  # объявленной, — и колонки сдвинулись. Ошибка молчаливая: сводка не падает, она
+  # показывает «кто = T170, T171» и решение, начинающееся со слова owner, и
+  # читатель решает, что так и надо.
+  local drow did dwho dcols
+  while IFS= read -r drow; do
+    [[ -z "$drow" ]] && continue
+    did="$(awk -F'|' '{print $2}' <<< "$drow" | xargs)"
+    # Столбцов между внешними разделителями ровно пять: id, дата, решение, почему, кто.
+    dcols="$(awk -F'|' '{print NF-2}' <<< "$drow")"
+    if [[ "$dcols" != "5" ]]; then
+      echo "FAIL: [$FIXTURE] decisions.md ($did): колонок $dcols вместо пяти (id, дата, решение, почему, кто)"
+      echo "      Формат объявлен неизменным — его парсят forge-build и forge-status."
+      exit 1
+    fi
+    dwho="$(awk -F'|' '{print $6}' <<< "$drow" | xargs)"
+    if [[ "$dwho" != "owner" && "$dwho" != "auto" ]]; then
+      echo "FAIL: [$FIXTURE] decisions.md ($did): в колонке «кто» значение «${dwho}», допустимы owner и auto"
+      echo "      Чаще всего это сдвиг колонок, а не опечатка: сверь порядок полей со строкой заголовка."
+      exit 1
+    fi
+    if ! awk -F'|' '{print $3}' <<< "$drow" | xargs | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
+      echo "FAIL: [$FIXTURE] decisions.md ($did): во второй колонке не дата в формате ГГГГ-ММ-ДД"
+      exit 1
+    fi
+  done < <(grep -E '^\| *D[0-9]{3} *\|' "$DECISIONS" || true)
+
   echo "PASS: $FIXTURE"
 }
 
