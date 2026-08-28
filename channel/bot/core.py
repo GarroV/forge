@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import base64
 import hmac
 import re
 from typing import Optional, Tuple
@@ -17,7 +18,21 @@ from typing import Optional, Tuple
 # Типы сообщений — ровно те четыре, что описаны в протоколе системы
 # (templates/telegram-protocol.md). Пятого типа не бывает: если понадобится,
 # сначала правится протокол, потом здесь.
-KINDS = frozenset({"question", "block", "alert", "done"})
+KINDS = frozenset({"question", "block", "alert", "done", "show"})
+
+# Показ: картинка построенного экрана владельцу по ходу стройки. Заведён под класс
+# дефектов, который не ловит ни тест, ни сверка со спекой, — 13% замера: непонятный
+# онбординг, два ряда одинаковых кнопок, пропавшая подсказка. Их видно и только
+# видно, поэтому единственный работающий механизм — показать человеку.
+#
+# Пределы Telegram на подпись к фото и на число вложений в одном альбоме. Больше
+# десяти он не принимает целиком, а не обрезает.
+TELEGRAM_CAPTION_LIMIT = 1024
+MAX_PHOTOS = 10
+
+# Потолок на одно вложение. Telegram принимает и больше, но скриншот экрана,
+# весящий мегабайты, — это признак того, что шлют не то (запись видео, дамп).
+MAX_PHOTO_BYTES = 5 * 1024 * 1024
 
 # Жёсткий предел Telegram на одно сообщение. Не «примерно», а именно столько:
 # длиннее сервер Telegram отвергает целиком.
@@ -29,7 +44,7 @@ PROJECT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$")
 # Типы, после которых владелец отвечает. Только к ним добавляется подсказка про
 # реплай: на «часть готова» и «готово» отвечать нечего, а лишняя строка в каждом
 # сообщении быстро перестаёт читаться.
-AWAITING_ANSWER = frozenset({"question", "alert"})
+AWAITING_ANSWER = frozenset({"question", "alert", "show"})
 
 REPLY_HINT = "↩︎ Ответь реплаем на это сообщение — так ответ дойдёт до нужного проекта."
 
@@ -158,6 +173,26 @@ def validate_notify(payload: object) -> Tuple[bool, Optional[str]]:
     if not valid_project(payload.get("project")):
         return False, "поле project обязательно: латиница, цифры, пробел, точка, дефис, подчёркивание, до 64 символов"
 
+    photos = payload.get("photos")
+    if photos is not None:
+        if not isinstance(photos, list) or not photos:
+            return False, "поле photos, если задано, — непустой список картинок в base64"
+        if len(photos) > MAX_PHOTOS:
+            return False, "картинок не больше {}: столько Telegram берёт в один альбом".format(MAX_PHOTOS)
+        for item in photos:
+            if not isinstance(item, str) or not item.strip():
+                return False, "каждая картинка — строка base64"
+            try:
+                raw = base64.b64decode(item, validate=True)
+            except Exception:
+                return False, "картинка не разбирается как base64"
+            if not raw:
+                return False, "картинка пустая"
+            if len(raw) > MAX_PHOTO_BYTES:
+                return False, "картинка больше {} МБ — пришли скриншот, а не запись".format(
+                    MAX_PHOTO_BYTES // (1024 * 1024)
+                )
+
     return True, None
 
 
@@ -208,6 +243,7 @@ def outbound_text(kind: str, project: str, text: str) -> str:
         "block": "✅ Часть готова",
         "alert": "⚠️ Внимание",
         "done": "🏁 Готово",
+        "show": "👀 Посмотри",
     }
     head = marks.get(kind, kind)
     body = "{} · {}\n\n{}".format(head, project, text.strip())

@@ -18,15 +18,18 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import logging
 import os
 import sys
 from typing import Optional
 
 from aiogram import Bot, Dispatcher, types
+from aiogram.types import BufferedInputFile
 from aiogram.exceptions import TelegramConflictError
 from aiohttp import web
 
+import core
 import db
 from core import (
     chunk_text,
@@ -98,11 +101,30 @@ async def handle_notify(request: web.Request) -> web.Response:
     bot: Bot = request.app["bot"]
     owner = request.app["owner"]
 
+    photos = payload.get("photos") or []
     message_ids = []
     try:
-        for part in chunk_text(body):
-            sent = await bot.send_message(chat_id=owner, text=part)
-            message_ids.append(sent.message_id)
+        if photos:
+            # Картинка с подписью, а не текст со ссылкой на файл: показ существует
+            # ради того, чтобы владелец увидел экран с телефона, не открывая ничего.
+            # Подпись у Telegram короче сообщения, поэтому длинный текст уходит
+            # отдельным сообщением следом, а не режется молча.
+            caption = body if len(body) <= core.TELEGRAM_CAPTION_LIMIT else None
+            for index, item in enumerate(photos):
+                raw = base64.b64decode(item)
+                file = BufferedInputFile(raw, filename="shot-{}.png".format(index + 1))
+                sent = await bot.send_photo(
+                    chat_id=owner, photo=file, caption=caption if index == 0 else None
+                )
+                message_ids.append(sent.message_id)
+            if caption is None:
+                for part in chunk_text(body):
+                    sent = await bot.send_message(chat_id=owner, text=part)
+                    message_ids.append(sent.message_id)
+        else:
+            for part in chunk_text(body):
+                sent = await bot.send_message(chat_id=owner, text=part)
+                message_ids.append(sent.message_id)
     except Exception as exc:
         # Отдаём наружу факт неудачи, а не «принято»: система обязана узнать, что
         # сообщение не дошло, и записать это у себя.

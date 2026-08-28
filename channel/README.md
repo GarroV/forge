@@ -51,7 +51,7 @@
 
 | Метод | Путь | Что делает |
 |---|---|---|
-| `POST` | `/notify` | `{"project":"…","kind":"question\|block\|alert\|done","text":"…"}` → отправляет владельцу, пишет в журнал |
+| `POST` | `/notify` | `{"project":"…","kind":"question\|block\|alert\|done\|show","text":"…","photos":["base64",…]}` → отправляет владельцу, пишет в журнал. `photos` необязательно: до 10 картинок, до 5 МБ каждая, уходят фотографиями с подписью на первой |
 | `GET` | `/inbox` | `?project=<имя>` — неразобранные ответы, адресованные этому проекту (и безадресные): `{"pending":[{"id","text","project","received_at"}]}`. Без параметра отдаётся всё |
 | `POST` | `/ack` | `{"ids":[1,2],"project":"…"}` — пометить разобранными. Чужие id не помечаются и возвращаются в `rejected` со статусом `409` |
 | `GET` | `/healthz` | `status`, `polling`, `last_update_fetch_sec_ago`, `conflicts_in_a_row`, `last_error`, `last_poll_ok_at`, `pending_answers`, `oldest_pending_sec`; `503`, если база не отвечает **или опрос выбит** |

@@ -7,7 +7,10 @@
 
 from __future__ import annotations
 
+import base64
 import unittest
+
+import core
 
 from core import (
     KINDS,
@@ -272,6 +275,68 @@ class TestInboundReplyText(unittest.TestCase):
         # Владелец должен узнать про промах сразу, а не через день ожидания.
         text = inbound_reply_text(None)
         self.assertIn("реплаем", text.lower())
+
+
+class TestShowKind(unittest.TestCase):
+    """Показ: картинка построенного экрана владельцу.
+
+    Заведён под класс дефектов, который не ловит ни тест, ни сверка со спекой —
+    13% замера: непонятный онбординг, два ряда одинаковых кнопок, пропавшая
+    подсказка. Их видно и только видно.
+    """
+
+    def test_show_is_a_valid_kind(self):
+        ok, why = core.validate_notify(
+            {"kind": "show", "project": "shop", "text": "экран корзины"}
+        )
+
+        self.assertTrue(ok, why)
+
+    def test_show_asks_for_an_answer(self):
+        # Показ бессмыслен без ответа: подсказка про реплай обязана быть.
+        body = core.outbound_text("show", "shop", "экран корзины")
+
+        self.assertIn(core.REPLY_HINT, body)
+
+    def test_photos_must_be_base64(self):
+        ok, why = core.validate_notify(
+            {"kind": "show", "project": "shop", "text": "экран", "photos": ["не base64!!"]}
+        )
+
+        self.assertFalse(ok)
+
+    def test_empty_photo_list_is_refused(self):
+        # Пустой список — признак того, что отправитель собирался приложить
+        # картинку и не приложил; молча отправлять текст в таком случае нельзя.
+        ok, _ = core.validate_notify(
+            {"kind": "show", "project": "shop", "text": "экран", "photos": []}
+        )
+
+        self.assertFalse(ok)
+
+    def test_too_many_photos_are_refused(self):
+        shot = base64.b64encode(b"x").decode()
+        ok, why = core.validate_notify(
+            {"kind": "show", "project": "shop", "text": "экран",
+             "photos": [shot] * (core.MAX_PHOTOS + 1)}
+        )
+
+        self.assertFalse(ok)
+        self.assertIn("альбом", why)
+
+    def test_oversized_photo_is_refused(self):
+        # Мегабайты в «скриншоте» означают, что шлют запись экрана или дамп.
+        big = base64.b64encode(b"x" * (core.MAX_PHOTO_BYTES + 1)).decode()
+        ok, _ = core.validate_notify(
+            {"kind": "show", "project": "shop", "text": "экран", "photos": [big]}
+        )
+
+        self.assertFalse(ok)
+
+    def test_message_without_photos_still_works(self):
+        ok, _ = core.validate_notify({"kind": "block", "project": "shop", "text": "готово"})
+
+        self.assertTrue(ok)
 
 
 if __name__ == "__main__":

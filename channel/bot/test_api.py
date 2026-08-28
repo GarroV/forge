@@ -12,12 +12,14 @@ Telegram подменён: настоящую отправку проверят�
 from __future__ import annotations
 
 import os
+import base64
 import unittest
 from types import SimpleNamespace
 
 import asyncpg
 from aiohttp.test_utils import TestClient, TestServer
 
+import core
 import db
 import main
 
@@ -37,6 +39,13 @@ class FakeBot:
     async def send_message(self, chat_id, text):
         self._next_id += 1
         self.sent.append({"chat_id": chat_id, "text": text, "message_id": self._next_id})
+        return SimpleNamespace(message_id=self._next_id)
+
+    async def send_photo(self, chat_id, photo, caption=None):
+        self._next_id += 1
+        self.sent.append(
+            {"chat_id": chat_id, "photo": photo, "caption": caption, "message_id": self._next_id}
+        )
         return SimpleNamespace(message_id=self._next_id)
 
 
@@ -177,6 +186,63 @@ class TestHealthReportsWhatProcessMemoryCannot(ApiTestCase):
         payload = await (await self.client.get("/healthz")).json()
 
         self.assertIsNone(payload["last_poll_ok_at"])
+
+
+class TestShowSendsPictures(ApiTestCase):
+    """Показ уходит картинкой, а не ссылкой на файл.
+
+    Смысл механизма в том, чтобы владелец увидел экран с телефона, ничего не
+    открывая: класс дефектов «нужен человек» ловится только взглядом.
+    """
+
+    async def post_show(self, **extra):
+        body = {"kind": "show", "project": "shop", "text": "Экран корзины после блока cart"}
+        body.update(extra)
+        return await self.client.post(
+            "/notify", json=body, headers={"Authorization": "Bearer " + SECRET}
+        )
+
+    async def test_photo_goes_as_photo_with_caption(self):
+        shot = base64.b64encode(b"\x89PNG\r\n\x1a\n fake").decode()
+
+        response = await self.post_show(photos=[shot])
+
+        self.assertEqual(response.status, 200)
+        photo_calls = [c for c in self.bot.sent if "photo" in c]
+        self.assertEqual(len(photo_calls), 1)
+        self.assertIn("Экран корзины", photo_calls[0]["caption"])
+
+    async def test_several_photos_carry_one_caption(self):
+        # Подпись только у первой: Telegram иначе повторит текст под каждой.
+        shot = base64.b64encode(b"fake").decode()
+
+        await self.post_show(photos=[shot, shot, shot])
+
+        photo_calls = [c for c in self.bot.sent if "photo" in c]
+        self.assertEqual(len(photo_calls), 3)
+        self.assertEqual(sum(1 for c in photo_calls if c["caption"]), 1)
+
+    async def test_long_text_goes_as_a_separate_message(self):
+        # Подпись у Telegram короче сообщения: длинный текст обязан уйти отдельно,
+        # а не обрезаться молча.
+        shot = base64.b64encode(b"fake").decode()
+
+        await self.post_show(text="ц" * (core.TELEGRAM_CAPTION_LIMIT + 10), photos=[shot])
+
+        self.assertTrue(any("photo" in c for c in self.bot.sent))
+        self.assertTrue(any("text" in c for c in self.bot.sent))
+
+    async def test_show_without_photos_is_plain_message(self):
+        response = await self.post_show()
+
+        self.assertEqual(response.status, 200)
+        self.assertTrue(all("photo" not in c for c in self.bot.sent))
+
+    async def test_broken_base64_is_refused(self):
+        response = await self.post_show(photos=["это не base64"])
+
+        self.assertEqual(response.status, 400)
+        self.assertEqual(self.bot.sent, [])
 
 
 class TestFullRoundTrip(ApiTestCase):
