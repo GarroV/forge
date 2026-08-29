@@ -1,35 +1,35 @@
-<!-- spec.md — ЧТО строим: требования, сценарии, критерии готовности MVP. Заполняется на основе анкеты, research-отчёта и брейншторма; читают и владелец на гейте, и агенты, которые строят блоки. -->
+<!-- spec.md — WHAT we are building: requirements, scenarios, the MVP readiness criteria. Filled in from the intake, the research report and the brainstorm; read both by the owner at the gate and by the agents that build the blocks. -->
 
-# Спецификация проекта
+# Project specification
 
-<!-- Имя проекта, одна строка о проблеме, которую решает продукт. -->
+<!-- Project name, one line about the problem the product solves. -->
 
-## Обзор
+## Overview
 
-<!-- Что это, для кого, какую проблему решает. 3-5 предложений — продуктовый уровень, не технический: этот раздел должен быть понятен человеку без контекста стройки. -->
+<!-- What this is, who it is for, which problem it solves. Three to five sentences — product level, not technical: this section must be understandable to someone with no context of the build. -->
 
-## Пользователи и сценарии
+## Users and scenarios
 
-<!-- Кто пользуется продуктом (роли) и главные end-to-end сценарии их взаимодействия с ним, прозой. Пример формата: "Пользователь заходит на сайт → ищет товар → добавляет в корзину → оформляет заказ". -->
+<!-- Who uses the product (roles) and their main end-to-end scenarios, in prose. Example of the shape: "the user opens the site → searches for a product → adds it to the cart → places the order". -->
 
-## User stories с приоритетами
+## User stories with priorities
 
-<!-- Таблица ниже, по строке на историю. Формат истории: "Как <роль>, я хочу <действие>, чтобы <цель>". Приоритет: must | nice. Блок: имя блока из графа в plan.md, который эту историю закрывает, — им история связывается с планом машинно, а не чьей-то памятью.
+<!-- The table below, one row per story. Story shape: "As a <role>, I want <action>, so that <goal>". Priority: must | nice. Block: the name of a block from the graph in plan.md that covers this story — that is what links the story to the plan mechanically rather than by someone's memory.
 
-Зачем колонка «блок»: спека, план и описания блоков пишутся в одной сессии и расходятся молча — история must остаётся без блока, и её просто никто не строит. Проверка пакета сверяет эту колонку с составом блоков и краснеет, если история must ссылается на несуществующий блок или не ссылается ни на какой. Для nice допустимо «—»: их можно и не брать в MVP. -->
+Why the "block" column: the spec, the plan and the block descriptions are written in one session and drift apart silently — a must story ends up with no block, and simply nobody builds it. The package check compares this column against the set of blocks and turns red if a must story points at a block that does not exist or points at none. For nice stories "—" is acceptable: they may legitimately stay out of the MVP. -->
 
-| история | приоритет | блок |
+| story | priority | block |
 | --- | --- | --- |
-<!-- | Как гость, хочу сократить длинную ссылку без регистрации, чтобы быстро поделиться ей | must | api | -->
+<!-- | As a guest, I want to shorten a long link without signing up, so I can share it quickly | must | api | -->
 
-## DoD MVP
+## MVP Definition of Done
 
-<!-- Конкретный проверяемый список: что должно быть верно, чтобы MVP считался готовым (тесты зелёные, продукт запущен на тестовой площадке, демо-режим работает, конкретные сценарии проходят смоук). Пункты, которые можно отметить галочкой, а не общие слова. -->
+<!-- A concrete, checkable list: what must be true for the MVP to count as ready (tests green, the product running on the test platform, the demo mode working, specific scenarios passing a smoke test). Items you can tick off, not general words. -->
 
-## Что НЕ делаем
+## What we are NOT doing
 
-<!-- Явно исключённый из MVP функционал — чтобы агенты-строители не расширяли скоуп сами и не тратили на это циклы. -->
+<!-- Functionality explicitly excluded from the MVP — so that the building agents do not grow the scope themselves and spend cycles on it. -->
 
-## Открытые вопросы
+## Open questions
 
-<!-- Вопросы, оставшиеся после брейншторма (если есть): что решится по ходу стройки, а не блокирует старт. Формат: краткий вопрос + кто решает (владелец по ходу / система автономно). -->
+<!-- Questions left after the brainstorm, if any: what will be decided during the build rather than blocking the start. Shape: the question in brief + who decides (the owner as we go / the system autonomously). -->

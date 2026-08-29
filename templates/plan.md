@@ -1,51 +1,51 @@
-<!-- plan.md — КАК строим: стек, архитектура, декомпозиция на блоки. Заполняется на этапе спеки и плана на основе research-отчёта и брейншторма; блок-агенты читают этот файл как источник контрактов между блоками. -->
+<!-- plan.md — HOW we build: stack, architecture, decomposition into blocks. Filled in during the spec and plan phase from the research report and the brainstorm; block agents read this file as the source of the contracts between blocks. -->
 
-# Технический план
+# Technical plan
 
-<!-- Имя проекта, дата согласования. -->
+<!-- Project name, date of agreement. -->
 
-## Стек с обоснованием
+## Stack with rationale
 
-<!-- Каждый выбор технологии — с "почему", не только название. Пример: "PostgreSQL — реляционные данные с чёткой схемой; альтернатива (документная БД) рассматривалась и отклонена — связей больше, чем документов". -->
+<!-- Every technology choice comes with a "why", not just a name. Example: "PostgreSQL — relational data with a clear schema; the alternative (a document database) was considered and rejected — there are more relationships here than documents". -->
 
-## Архитектура
+## Architecture
 
-<!-- Схема верхнего уровня: из каких частей состоит система и как они взаимодействуют (текстом или диаграммой). Уровень детализации — достаточный, чтобы решить, где проходят границы блоков. -->
+<!-- The top-level picture: which parts the system consists of and how they interact (in prose or as a diagram). Detailed enough to decide where the boundaries between blocks run. -->
 
-## Блоки и граф зависимостей
+## Blocks and dependency graph
 
-<!-- Каждый блок — логическая единица продукта со своей спекой (docs/forge/blocks/<имя>.md), контрактом и рабочим деревом. Граф ниже — какой блок ждёт готового контракта другого (реальная зависимость, а не просто "связаны").
+<!-- Every block is a logical unit of the product with its own spec (docs/forge/blocks/<name>.md), its own contract and its own working tree. The graph below says which block waits for another's contract to be ready (a real dependency, not merely "related").
 
-У продукта с интерфейсом обязателен блок `visual`: общая визуальная система (сетка, типографика, цвета, компоненты, состояния) по экранному эталону из docs/forge/design/. Он идёт до блоков, которые рисуют экраны, — иначе каждый блок изобретает свою кнопку, и свести их потом дороже, чем договориться сразу. Заводится здесь, а не задним числом: на живом проекте блок появился после того, как владелец сказал, что не может даже протестировать продукт. -->
+A product with an interface must have a `visual` block: the shared visual system (grid, typography, colours, components, states) built from the screen reference in docs/forge/design/. It comes before the blocks that draw screens — otherwise every block invents its own button, and reconciling them afterwards costs more than agreeing up front. It is declared here, not added later: on a live project the block appeared only after the owner said he could not even test the product. -->
 
 ```mermaid
 graph TD
-  %% один узел на блок, стрелка = "зависит от". Пример: block_web --> block_api
+  %% one node per block, an arrow means "depends on". Example: block_web --> block_api
 ```
 
-## Контракты между блоками
+## Contracts between blocks
 
-<!-- Для каждой пары зависимых блоков — что именно один отдаёт другому: точные сигнатуры функций, эндпоинты, форматы сообщений, схема данных. Это позволяет строить блоки параллельно, не дожидаясь друг друга.
+<!-- For every pair of dependent blocks — exactly what one provides to the other: precise function signatures, endpoints, message formats, data schema. That is what allows blocks to be built in parallel without waiting for each other.
 
-У каждого контракта — исполняемая проверка с ОБЕИХ сторон: потребитель проверяет, что зовёт объявленное, поставщик — что отдаёт объявленное. Обе живут в своих блоках и краснеют порознь. Зачем: блоки строятся параллельно агентами, которые не видят друг друга, и расхождение иначе всплывает при слиянии — то есть у того, кто его не вносил. Это тот же случай, ради которого в индустрии придумано контрактное тестирование (consumer-driven contracts); машинерию с брокером не заводим — стороны контракта живут в одном репозитории. Основание: docs/research/2026-08-28-testing-industry.md. -->
+Every contract has an executable check on BOTH sides: the consumer verifies that it calls what was declared, the provider that it returns what was declared. Both live in their own blocks and turn red separately. Why: blocks are built in parallel by agents that cannot see each other, and otherwise a divergence surfaces at merge time — that is, for whoever did not introduce it. This is the very case contract testing was invented for (consumer-driven contracts); we do not bring in the broker machinery — both sides of the contract live in one repository. Basis: docs/research/2026-08-28-testing-industry.md. -->
 
-## Проверки качества
+## Quality gates
 
-<!-- Чем этот проект проверяется машинно — по строке на роль. Шесть ролей обязательны: формат, линт с типами, проверка типов, тесты с порогом покрытия, мёртвый код, границы модулей. Наборы инструментов по стекам и ситуативные проверки с условиями включения — скилл forge-quality-gates. -->
+<!-- How this project is checked by machine — one row per role. Six roles are mandatory: formatting, type-aware linting, type checking, tests with a coverage threshold, dead code, module boundaries. Tool sets per stack, and situational checks with their conditions for switching on, live in the forge-quality-gates skill. -->
 
-| Роль | Команда | Инструмент |
+| Role | Command | Tool |
 | --- | --- | --- |
 
-<!-- Границы модулей выводятся из графа блоков выше механически: блок импортирует только то, от чего зависит по графу; обратное направление запрещено. Это единственная проверка, которая ловит нарушение, невидимое внутри отдельной рабочей копии и всплывающее только при слиянии. -->
+<!-- Module boundaries are derived mechanically from the block graph above: a block imports only what it depends on in the graph; the reverse direction is forbidden. This is the only check that catches a violation invisible inside a single working copy and surfacing only at merge time. -->
 
-**Единая команда прогона:** <путь к исполняемому файлу, например `scripts/check`>
+**Single run command:** <path to an executable, for example `scripts/check`>
 
-<!-- Одна точка входа, которая запускает весь канонический набор и пишет машинный отчёт. Её зовёт приёмка блока, хук pre-push и CI — все трое одну и ту же, иначе они расходятся и «зелено у меня» перестаёт что-либо значить. Объявляется здесь машинно, а не описывается прозой в README. -->
+<!-- One entry point that runs the whole canonical set and writes the machine-readable report. Block acceptance calls it, the pre-push hook calls it, and CI calls it — all three the same one, otherwise they drift apart and "it's green on my machine" stops meaning anything. It is declared here machine-readably, not described in prose in the README. -->
 
-**Машинный отчёт прогона:** <формат и путь, куда его пишет раннер>
+**Machine-readable run report:** <format and the path the runner writes it to>
 
-<!-- Отчёт, который приёмка читает вместо кода возврата: сколько проверок выполнено, сколько пропущено и по какой причине. JUnit XML умеют все распространённые раннеры, годится и родной JSON. Формат объявляется здесь, а не зашивается в ядро: раннеры у проектов разные. Не объявлен — приёмке нечего читать, и гейт снова держится на коде возврата, который не отличает двести зелёных проверок от нуля зарегистрированных. -->
+<!-- The report acceptance reads instead of the exit code: how many checks ran, how many were skipped and why. Every common runner can emit JUnit XML; a native JSON format works too. The format is declared here rather than hard-wired into the core: runners differ between projects. Not declared — acceptance has nothing to read, and the gate falls back to the exit code, which does not distinguish two hundred green checks from zero registered ones. -->
 
-## Риски
+## Risks
 
-<!-- Риск → смягчение. Что может пойти не так на интеграции блоков, при выборе стека, при развёртывании — и что делать, если это случится. -->
+<!-- Risk → mitigation. What can go wrong when integrating blocks, in the choice of stack, during deployment — and what to do if it happens. -->

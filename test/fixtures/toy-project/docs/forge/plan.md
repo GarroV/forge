@@ -1,32 +1,33 @@
-# Технический план
+# Technical plan
 
-## Стек с обоснованием
+## Stack with rationale
 
-Python + FastAPI и Postgres: у владельца уже есть опыт, библиотеки зрелые.
+Python with FastAPI and Postgres: the owner already has experience with them and the
+libraries are mature.
 
-## Архитектура
+## Architecture
 
-Один сервис, две поверхности: HTTP API и минимальная веб-страница.
+One service, two surfaces: an HTTP API and a minimal web page.
 
-## Блоки и граф зависимостей
+## Blocks and dependency graph
 
-Блок `api` — хранение ссылок и редирект. Блок `web` — страница создания и статистика,
-зависит от контракта `api`.
+Block `api` — link storage and redirect. Block `web` — the page for creating links and
+the statistics, depends on the `api` contract.
 
-## Контракты между блоками
+## Contracts between blocks
 
-`api` отдаёт `POST /links` → `{ code }` и `GET /:code` → `302`. `web` их потребляет.
+`api` provides `POST /links` → `{ code }` and `GET /:code` → `302`. `web` consumes them.
 
-## Проверки качества
+## Quality gates
 
-| Роль | Команда | Инструмент |
+| Role | Command | Tool |
 | --- | --- | --- |
-| Формат | `scripts/check` | ruff format |
+| Formatting | `scripts/check` | ruff format |
 
-**Единая команда прогона:** `scripts/check`
+**Single run command:** `scripts/check`
 
-**Машинный отчёт прогона:** JUnit XML в `reports/junit.xml`
+**Machine-readable run report:** JUnit XML in `reports/junit.xml`
 
-## Риски
+## Risks
 
-Коллизия коротких кодов — смягчается длиной кода и проверкой на существование.
+Short-code collision — mitigated by the code length and a check for existence.

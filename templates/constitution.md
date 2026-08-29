@@ -1,25 +1,25 @@
-<!-- constitution.md — принципы проекта, которые не меняются в ходе стройки. Заполняется владельцем вместе с системой на этапе спеки и плана; утверждается на гейте перед стройкой; агенты-строители сверяются с ней при любом конфликте приоритетов. -->
+<!-- constitution.md — the project's principles, which do not change during the build. Filled in by the owner together with the system during the spec and plan phase; approved at the gate before the build; the building agents consult it whenever priorities conflict. -->
 
-# Конституция проекта
+# Project constitution
 
-<!-- Имя проекта, дата согласования, одна строка о статусе (например: "утверждена владельцем 2026-07-29"). -->
+<!-- Project name, date of agreement, one line of status (for example: "approved by the owner 2026-07-29"). -->
 
-## Принципы качества
+## Quality principles
 
-<!-- 3-5 пунктов: что важно для ЭТОГО продукта превыше всего при конфликте решений (например: "надёжность важнее скорости фич", "простота важнее гибкости"). Не общие слова — конкретные приоритеты. -->
+<!-- Three to five items: what matters most for THIS product when decisions conflict (for example: "reliability over shipping features faster", "simplicity over flexibility"). Not platitudes — concrete priorities. -->
 
-## Тестовый стандарт
+## Testing standard
 
-<!-- Обязательный минимум для этого проекта: TDD (красный → зелёный → рефактор) для новой функциональности; порог покрытия — **относительный**: не ниже, чем на прошлой приёмке (абсолютная цифра, например 80%, ставится ориентиром и не заворачивает блок сама по себе — по замеру она не поймала ни одного дефекта, но подталкивает писать тесты без ассертов ради процента). Какие типы тестов обязательны (unit / integration / e2e) и где граница критичного пути, который нельзя сдавать без теста. Плюс правило, которое дороже порога покрытия: **проверка, которая не падает на испорченном входе, — не проверка**. Каждую новую проверку прогнать на намеренно испорченной копии и убедиться, что она падает И печатает внятную причину. Саму порчу тоже подтвердить: если подстановка не применилась, «негативный прогон» окажется фиктивно зелёным — так уже бывало. -->
+<!-- The mandatory minimum for this project: TDD (red → green → refactor) for new functionality; the coverage threshold is **relative** — no lower than at the previous acceptance (an absolute figure such as 80% is kept as a guide and does not by itself send a block back: by measurement it caught no defect at all, while it does push people to write assertion-free tests for the sake of the percentage). Which kinds of tests are mandatory (unit / integration / e2e) and where the critical path lies that must not ship untested. Plus the rule that is worth more than any coverage threshold: **a check that does not fail on broken input is not a check**. Run every new check against a deliberately broken copy and confirm that it fails AND prints an intelligible reason. Confirm the breakage itself too: if the substitution did not apply, the "negative run" is falsely green — that has happened. -->
 
 ## Docs-as-DoD
 
-<!-- Документация — часть Definition of Done, а не отдельный шаг "потом". Какие документы обязаны обновляться вместе с кодом в этом проекте (спека блока, CHANGELOG, инвентарь эндпоинтов/переменных и т.п.) и что проверяется перед тем, как считать задачу закрытой. -->
+<!-- Documentation is part of the Definition of Done, not a separate later step. Which documents must be updated together with the code in this project (the block spec, CHANGELOG, the inventory of endpoints and variables, and so on) and what is checked before a task counts as closed. -->
 
-## Правила безопасности
+## Security rules
 
-<!-- Секреты никогда не попадают в git: значения — в .env (gitignored), в документации — только имена переменных. При этом закоммиченный .env.example с именами и безопасными значениями обязателен: без него проект нельзя поднять заново — ни в другой сессии, ни другому человеку. Валидация пользовательского ввода на границах системы. Что ещё специфично для этого продукта (аутентификация, платежи, персональные данные пользователей) — перечислить явно. -->
+<!-- Secrets never reach git: values live in .env (gitignored), documentation carries only variable names. A committed .env.example with names and safe values is mandatory: without it the project cannot be brought up again — not in another session, not by another person. Validate user input at the system's boundaries. Whatever else is specific to this product (authentication, payments, users' personal data) — list it explicitly. -->
 
-## Демо-режим
+## Demo mode
 
-<!-- Продукт с интерфейсом должен иметь живое демо без регистрации: изолированный демо-аккаунт/воркспейс + идемпотентный сид представительных данных + лёгкая точка входа. Язык демо — всегда английский, независимо от языка продукта. Демо изолировано от реальных данных и само возвращается к чистому виду. -->
+<!-- A product with an interface must have a live demo that needs no registration: an isolated demo account or workspace, an idempotent seed of representative data, and a light entry point. The demo's language is always English, regardless of the product's language. The demo is isolated from real data and returns to a clean state by itself. -->

@@ -1,7 +1,7 @@
 <!-- managed by forge: формат строк ниже не менять — файл парсят forge-build и forge-status -->
 # Задачи
 
-| id | блок | зависит от | статус | задача | issue | этап |
+| id | block | depends on | status | task | issue | stage |
 |---|---|---|---|---|---|---|
 | T001 | worker | — | done | Настроить очередь фоновых задач | #21 | 1 |
 | T002 | worker | T001 | failed | Обработать edge-case: пустой payload — тест упал на CI | #22 | 1 |

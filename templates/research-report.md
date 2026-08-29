@@ -1,25 +1,25 @@
-<!-- research-report.md — итог автоматического research: что уже готово в мире и на чём строить решения на брейншторме. Заполняется параллельными research-агентами и синтезом; читает владелец на этапе брейншторма. -->
+<!-- research-report.md — the result of automatic research: what already exists in the world and what the brainstorm decisions will stand on. Filled in by the parallel research agents and by the synthesis step; the owner reads it during the brainstorm. -->
 
-# Отчёт research
+# Research report
 
-<!-- Имя проекта, дата. -->
+<!-- Project name, date. -->
 
-## Готовые решения
+## Existing solutions
 
-<!-- Найденные репозитории/библиотеки, которые закрывают часть задачи. Для каждого: ссылка, лицензия, что именно переиспользуем или адаптируем и почему (или почему пишем своё, если ничего не подошло). -->
+<!-- Repositories and libraries found that cover part of the problem. For each: link, licence, what exactly is reused or adapted and why (or why we write our own, if nothing fit). -->
 
-## Рынок и референсы
+## Market and references
 
-<!-- Конкуренты и аналоги продукта: что у них получилось, какие паттерны стоит взять, чего стоит избежать. Ссылки обязательны. -->
+<!-- Competitors and analogues of the product: what worked for them, which patterns are worth taking, what is worth avoiding. Links are mandatory. -->
 
-## Стек и версии
+## Stack and versions
 
-<!-- Проверенные по документации версии и особенности библиотек/фреймворков из plan.md: актуальный API, известные несовместимости, миграционные заметки. -->
+<!-- Versions and quirks of the libraries and frameworks from plan.md, verified against their documentation: current API, known incompatibilities, migration notes. -->
 
-## Развилки для брейншторма
+## Forks for the brainstorm
 
-<!-- Нумерованный список; каждый пункт — одна развилка в формате: суть выбора / варианты / рекомендация с обоснованием. Пример:
-1. Готовая библиотека X вместо своей реализации — варианты: (a) взять X, (b) написать свою; рекомендация: (a), т.к. X закрывает большую часть требований и активно поддерживается.
-Ниже — только каркас первого пункта; реальные развилки этого проекта добавляются по итогам research. -->
+<!-- A numbered list; each item is one fork in the format: what is being chosen / options / recommendation with rationale. Example:
+1. Existing library X instead of our own implementation — options: (a) take X, (b) write our own; recommendation: (a), since X covers most of the requirements and is actively maintained.
+Below is only the skeleton of the first item; the real forks of this project are added from the research results. -->
 
-1. <!-- развилка: суть выбора / варианты / рекомендация с обоснованием -->
+1. <!-- fork: what is being chosen / options / recommendation with rationale -->

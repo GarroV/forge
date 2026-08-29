@@ -1,32 +1,32 @@
-<!-- block.md — спека одного блока продукта. Копия кладётся в docs/forge/blocks/<имя>.md на этапе плана; дальше её ведёт агент, отвечающий за блок (Docs-as-DoD — обновляется вместе с кодом, не после). -->
+<!-- block.md — the spec of one product block. A copy is placed in docs/forge/blocks/<name>.md during the plan phase; from then on the agent responsible for the block maintains it (Docs-as-DoD — updated together with the code, not afterwards). -->
 
-# Блок: <!-- имя блока, например "api" или "web" -->
+# Block: <!-- block name, e.g. "api" or "web" -->
 
-## Назначение
+## Purpose
 
-<!-- Что этот блок делает в продукте и почему он выделен в отдельную единицу, а не часть другого блока. 2-3 предложения. -->
+<!-- What this block does in the product and why it is a separate unit rather than part of another block. Two or three sentences. -->
 
-## API-контракт
+## API contract
 
-<!-- Точные сигнатуры функций / HTTP-эндпоинты / формат сообщений, которые блок отдаёт другим блокам. Пример: "POST /api/links {url: string} -> {id: string, short_url: string}". Меняется только по согласованию с зависимыми блоками. -->
+<!-- Exact function signatures / HTTP endpoints / message formats this block provides to other blocks. Example: "POST /api/links {url: string} -> {id: string, short_url: string}". Changed only in agreement with the blocks that depend on it. -->
 
-## Зависимости
+## Dependencies
 
-<!-- От каких других блоков продукта зависит (имена из графа в plan.md) и какие внешние сервисы/библиотеки нужны (с версиями, если известны). "—", если зависимостей нет. -->
+<!-- Which other product blocks this one depends on (names from the graph in plan.md) and which external services or libraries it needs (with versions, if known). "—" if there are none. -->
 
-## Definition of Done блока
+## Definition of Done for the block
 
-<!-- Проверяемый список для ЭТОГО блока: тесты зелёные, покрытие не ниже прошлой приёмки, статические проверки проекта зелёные, смоук флоу блока пройден фактически, документация блока обновлена и CHANGELOG пополнен, интеграция с зависимыми блоками не сломана.
+<!-- A checkable list for THIS block: tests green, coverage no lower than at the previous acceptance, the project's static checks green, the block's flow smoke-tested for real, the block's documentation updated and the CHANGELOG appended, integration with dependent blocks not broken.
 
-Отдаёт или потребляет контракт из техплана — проверка контракта со своей стороны обязательна: потребитель проверяет, что зовёт объявленное, поставщик — что отдаёт объявленное.
+It provides or consumes a contract from the technical plan — a contract check from its own side is mandatory: the consumer verifies that it calls what was declared, the provider that it returns what was declared.
 
-Есть экраны — визуальные пункты обязательны: экран совпадает с эталоном из docs/forge/design/ (сверено открытием обоих, а не по памяти), состояния пусто/загрузка/ошибка/нет прав отрисованы, компоненты взяты из визуальной системы, а не нарисованы заново. Без них приёмка пропускает экран, не похожий на нарисованное: тесты зелёные, продукт не тот.
+There are screens — visual items are mandatory: the screen matches the reference in docs/forge/design/ (compared by opening both, not from memory), the empty / loading / error / no-access states are drawn, components come from the visual system rather than being drawn again. Without them acceptance lets through a screen that does not look like what was designed: tests green, wrong product.
 
-У каждого пункта — этап, к которому он относится (колонка «этап»), если блок строится не за один заход. Причина: контракт пишется на блок целиком, а работа идёт очередями, и агент получает список, где половина пунктов относится к четвёртой очереди — на живом прогоне у одного блока это были три языка и админка справочников, у другого развёртывание и CI. Спасло только то, что диспетчер оговорил границы словами в задании, то есть состав задания зависел от того, что он вспомнил. Пометка возвращает границу в сам контракт: агент видит свою часть, и приёмка сверяется с той же строкой. Блок за один заход — колонка не нужна, ставь «—». -->
+Every item carries the stage it belongs to (the "stage" column), if the block is not built in one pass. Why: the contract is written for the whole block while the work goes in waves, and the agent receives a list where half the items belong to the fourth wave — on a live run that was three languages and a reference-data admin panel for one block, deployment and CI for another. The only thing that saved it was the dispatcher spelling out the boundary in the assignment, which means the assignment depended on what the dispatcher remembered. The marker puts the boundary back into the contract itself: the agent sees its part, and acceptance checks against the same line. A block built in one pass does not need the column — put "—". -->
 
-| этап | пункт готовности |
+| stage | readiness item |
 | --- | --- |
 
-## Статус
+## Status
 
-<!-- Текущий статус блока: not_started / in_progress / done / blocked. Одна строка с датой последнего обновления. -->
+<!-- The block's current status: not_started / in_progress / done / blocked. One line with the date it was last updated. -->

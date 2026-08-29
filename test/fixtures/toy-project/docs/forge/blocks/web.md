@@ -1,21 +1,22 @@
-# Блок: web
+# Block: web
 
-## Назначение
+## Purpose
 
-Страница создания ссылки и просмотра статистики переходов.
+The page for creating a link and viewing click statistics.
 
-## API-контракт
+## API contract
 
-Потребляет `POST /links` и `GET /:code` блока api. Своего API не отдаёт.
+Consumes `POST /links` and `GET /:code` from the api block. Provides no API of its own.
 
-## Зависимости
+## Dependencies
 
-api — нужен готовый контракт создания ссылки.
+api — needs a ready contract for creating links.
 
-## Definition of Done блока
+## Definition of Done for the block
 
-Тесты зелёные, покрытие не ниже прошлой приёмки; страница проверена в живом браузере.
+Tests green, coverage no lower than at the previous acceptance; the page checked in a
+live browser.
 
-## Статус
+## Status
 
-не начат
+not started

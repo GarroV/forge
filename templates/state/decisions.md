@@ -1,8 +1,8 @@
-<!-- managed by forge: формат строк ниже не менять — файл парсят forge-build и forge-status -->
-# Решения
+<!-- managed by forge: do not change the row format below — forge-build and forge-status parse this file -->
+# Decisions
 
-<!-- id: Dnnn (D001, D002, ...). кто: owner (решил владелец) | auto (решено автономно диспетчером). -->
+<!-- id: Dnnn (D001, D002, ...). who: owner (the owner decided) | auto (decided autonomously by the dispatcher). -->
 
-| id | дата | решение | почему | кто |
+| id | date | decision | why | who |
 |---|---|---|---|---|
-<!-- | D001 | 2026-07-29 | Пример решения | Пример обоснования | owner | -->
+<!-- | D001 | 2026-07-29 | Example decision | Example rationale | owner | -->

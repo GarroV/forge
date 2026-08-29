@@ -63,7 +63,7 @@ while IFS= read -r row; do
   [[ -n "$blk" && "$blk" != "—" ]] || fail "история must не называет блок: «${story}…»"
   grep -qxF "$blk" <<< "$declared_blocks" \
     || fail "история must ссылается на блок «${blk}», которого нет в docs/forge/blocks/: «${story}…»"
-done < <(grep -E '^\|' "$SPEC" | grep -vE '^\| *(история|-{3,}) *\|' || true)
+done < <(grep -E '^\|' "$SPEC" | grep -vE '^\| *(история|story|-{3,}) *\|' || true)
 
 # 3. Блок описан, но план о нём не знает — диспетчер раздаёт работу по плану и
 # такого блока не увидит.
@@ -76,13 +76,15 @@ done <<< "$declared_blocks"
 # блоки строятся параллельно, не зная, чем обмениваются.
 for f in "$BLOCKS_DIR"/*.md; do
   name="$(basename "$f" .md)"
-  for section in "API-контракт" "Definition of Done блока"; do
-    body="$(awk -v s="## $section" '
-      $0 == s {found=1; next}
+  # Имена секций на обоих языках: совпало любое — раздел считается найденным.
+  for section in "API-контракт|API contract" "Definition of Done блока|Definition of Done for the block"; do
+    ru="${section%%|*}"; en="${section##*|}"
+    body="$(awk -v ru="## $ru" -v en="## $en" '
+      $0 == ru || $0 == en {found=1; next}
       found && /^## / {exit}
       found {print}
     ' "$f" | grep -vE '^\s*$|^\s*<!--|-->' || true)"
-    [[ -n "$body" ]] || fail "блок «${name}»: раздел «${section}» пуст — строить по нему нечего"
+    [[ -n "$body" ]] || fail "блок «${name}»: раздел «${en}» пуст — строить по нему нечего"
   done
 done
 

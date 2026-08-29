@@ -1,21 +1,22 @@
-# Блок: api
+# Block: api
 
-## Назначение
+## Purpose
 
-Хранение ссылок и редирект по короткому коду.
+Storing links and redirecting by short code.
 
-## API-контракт
+## API contract
 
-`POST /links` → `{ code }`; `GET /:code` → `302` на исходный адрес.
+`POST /links` → `{ code }`; `GET /:code` → `302` to the original address.
 
-## Зависимости
+## Dependencies
 
-Нет: блок базовый.
+None: this is a base block.
 
-## Definition of Done блока
+## Definition of Done for the block
 
-Тесты зелёные, покрытие не ниже прошлой приёмки; смоук создания и редиректа пройден фактически.
+Tests green, coverage no lower than at the previous acceptance; creating a link and the
+redirect smoke-tested for real.
 
-## Статус
+## Status
 
-в работе
+in progress

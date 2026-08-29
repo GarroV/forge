@@ -99,7 +99,9 @@ check_fixture() {
   local marker_line
   # `|| true` обязателен: без совпадения grep возвращает 1, а под `set -e` с
   # `pipefail` это убивает весь прогон молча — с пустым выводом и кодом 1.
-  marker_line="$(grep -nF 'Формат журнала: с этой строки каждый запуск агента записывается с ролью и моделью' "$PROGRESS" | head -1 | cut -d: -f1 || true)"
+  # Два написания маркера: английское — канон, русское — журналы, начатые раньше
+  # перевода ядра. Перевод не должен молча отключать проверку на живом проекте.
+  marker_line="$(grep -nE 'Формат журнала: с этой строки каждый запуск агента записывается с ролью и моделью|Log format: from this line on, every agent launch is recorded with its role and model' "$PROGRESS" | head -1 | cut -d: -f1 || true)"
 
   if [[ -z "$marker_line" ]]; then
     echo "NOTE: [$FIXTURE] в progress.md нет маркера формата — записи о запуске не проверяются (журнал до правила)"
@@ -123,7 +125,7 @@ check_fixture() {
       # останавливало стройку проекта с корректным журналом — на живом проекте это и
       # случилось. Пробел перед уточнением обязателен: иначе имя блока `web` совпадёт
       # с записью про `web2`.
-      if ! grep -qE "Запущен блок ${block}( [^:]*)?: роль [A-Za-z0-9_-]+, модель [^ ,]+" "$PROGRESS"; then
+      if ! grep -qE "(Запущен блок|Block) ${block}( [^:]*)?: (роль|role) [A-Za-z0-9_-]+, (модель|model) [^ ,]+" "$PROGRESS"; then
         echo "FAIL: [$FIXTURE] progress.md: нет записи о запуске блока $block с ролью и моделью"
         exit 1
       fi
@@ -261,7 +263,7 @@ check_fixture() {
   # в тексте задачи встречается `|`, и подсчёт полей дал бы ложное срабатывание —
   # на живом проекте именно так проверка и покраснела на ровном месте.
   local srow sid sstage dep_stage
-  if ! grep -qE '^\| *id *\|.*\| *этап *\|' "$TASKS"; then
+  if ! grep -qE '^\| *id *\|.*\| *(этап|stage) *\|' "$TASKS"; then
     echo "NOTE: [$FIXTURE] в tasks.md нет колонки «этап» — порядок этапов не проверяется"
     echo "PASS: $FIXTURE"
     return 0

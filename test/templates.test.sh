@@ -41,17 +41,17 @@ check_template() {
 
 # Список секций — дословно из брифа Task 4 (Interfaces).
 check_template constitution.md \
-  "Принципы качества" "Тестовый стандарт" "Docs-as-DoD" "Правила безопасности" "Демо-режим"
+  "Quality principles" "Testing standard" "Docs-as-DoD" "Security rules" "Demo mode"
 
 check_template spec.md \
-  "Обзор" "Пользователи и сценарии" "User stories с приоритетами" "DoD MVP" "Что НЕ делаем" "Открытые вопросы"
+  "Overview" "Users and scenarios" "User stories with priorities" "MVP Definition of Done" "What we are NOT doing" "Open questions"
 
 # «Проверки качества» — несущая секция: её заполняет forge-new до первой строки
 # кода, читает приёмка блока и бриф блок-агенту. Без неё в контракте удаление
 # секции прошло бы молча, а вся врезка гейтов перестала бы работать.
 check_template plan.md \
-  "Стек с обоснованием" "Архитектура" "Блоки и граф зависимостей" "Контракты между блоками" \
-  "Проверки качества" "Риски"
+  "Stack with rationale" "Architecture" "Blocks and dependency graph" "Contracts between blocks" \
+  "Quality gates" "Risks"
 
 # Формат машинного отчёта объявляется в техплане, а не в ядре: раннеры у проектов
 # разные. Без объявленного отчёта приёмке нечего читать, и она снова принимает блок
@@ -62,7 +62,7 @@ check_template plan.md \
 # а после стройки у проекта не остаётся ничего, что может покраснеть.
 # История must обязана называть блок, который её закрывает: без этой связи спека и
 # план расходятся молча — история остаётся без блока, и её никто не строит.
-grep -qF '| история | приоритет | блок |' "$TEMPLATES_DIR/spec.md" || {
+grep -qF '| story | priority | block |' "$TEMPLATES_DIR/spec.md" || {
   echo "FAIL: spec.md — у user stories нет колонки «блок», связь с планом держится только памятью"
   exit 1
 }
@@ -70,17 +70,17 @@ grep -qF '| история | приоритет | блок |' "$TEMPLATES_DIR/sp
 # Контракт между блоками без исполняемой проверки с обеих сторон — единственное
 # место, где параллельная стройка расходится незаметно: блоки не видят друг друга,
 # и расхождение всплывает при слиянии у того, кто его не вносил.
-grep -qF 'исполняемая проверка с ОБЕИХ сторон' "$TEMPLATES_DIR/plan.md" || {
+grep -qF 'executable check on BOTH sides' "$TEMPLATES_DIR/plan.md" || {
   echo "FAIL: plan.md — у контрактов между блоками нет требования проверки с обеих сторон"
   exit 1
 }
 
-grep -qF 'Единая команда прогона' "$TEMPLATES_DIR/plan.md" || {
+grep -qF 'Single run command' "$TEMPLATES_DIR/plan.md" || {
   echo "FAIL: plan.md — не объявлена единая команда прогона, которую зовут приёмка, хук и CI"
   exit 1
 }
 
-grep -qF 'Машинный отчёт прогона' "$TEMPLATES_DIR/plan.md" || {
+grep -qF 'Machine-readable run report' "$TEMPLATES_DIR/plan.md" || {
   echo "FAIL: plan.md — нет объявления машинного отчёта прогона, приёмке нечего читать"
   exit 1
 }
@@ -89,17 +89,17 @@ grep -qF 'Машинный отчёт прогона' "$TEMPLATES_DIR/plan.md" |
 # цифра не поймала ни одного, зато подталкивает писать тесты без ассертов ради
 # процента). Формулировка обязана совпадать в принципах проекта и в Definition of Done
 # блока: разойдутся — блок-агент и приёмка будут заворачивать по разным правилам.
-grep -qF 'не ниже, чем на прошлой приёмке' "$TEMPLATES_DIR/constitution.md" || {
+grep -qF 'no lower than at the previous acceptance' "$TEMPLATES_DIR/constitution.md" || {
   echo "FAIL: constitution.md — порог покрытия не объявлен относительным"
   exit 1
 }
-grep -qF 'покрытие не ниже прошлой приёмки' "$TEMPLATES_DIR/block.md" || {
+grep -qF 'coverage no lower than at the previous acceptance' "$TEMPLATES_DIR/block.md" || {
   echo "FAIL: block.md — Definition of Done требует абсолютного порога покрытия"
   exit 1
 }
 
 check_template block.md \
-  "Назначение" "API-контракт" "Зависимости" "Definition of Done блока" "Статус"
+  "Purpose" "API contract" "Dependencies" "Definition of Done for the block" "Status"
 
 # Этап у пункта готовности. Контракт пишется на блок целиком, а строится он
 # очередями: без пометки агент получает список, где часть пунктов относится к
@@ -112,12 +112,12 @@ grep -qF 'visual' "$TEMPLATES_DIR/plan.md" || {
   echo "FAIL: plan.md — в графе блоков не назван обязательный блок visual"
   exit 1
 }
-grep -qF 'совпадает с эталоном' "$TEMPLATES_DIR/block.md" || {
+grep -qF 'matches the reference' "$TEMPLATES_DIR/block.md" || {
   echo "FAIL: block.md — в Definition of Done нет сверки экрана с эталоном"
   exit 1
 }
 
-grep -qF 'этап | пункт готовности' "$TEMPLATES_DIR/block.md" || {
+grep -qF 'stage | readiness item' "$TEMPLATES_DIR/block.md" || {
   echo "FAIL: block.md — у пунктов Definition of Done нет пометки этапа"
   exit 1
 }
@@ -134,7 +134,7 @@ for marker in 'Что уже живёт на этой площадке' 'вну�
 done
 
 check_template research-report.md \
-  "Готовые решения" "Рынок и референсы" "Стек и версии" "Развилки для брейншторма"
+  "Existing solutions" "Market and references" "Stack and versions" "Forks for the brainstorm"
 
 # Список секций — дословно из брифа Task 10 (Interfaces).
 check_template retro.md \

@@ -1,34 +1,34 @@
-# Спецификация проекта
+# Project specification
 
-Сокращалка ссылок: короткий код вместо длинного адреса.
+A link shortener: a short code instead of a long address.
 
-## Обзор
+## Overview
 
-Сервис, который принимает длинный адрес и отдаёт короткий код. Нужен, чтобы делиться
-ссылками в мессенджерах, где длинный адрес занимает половину сообщения.
+A service that takes a long address and returns a short code. It exists so links can be
+shared in messengers, where a long address takes up half the message.
 
-## Пользователи и сценарии
+## Users and scenarios
 
-Гость заходит на страницу → вставляет длинную ссылку → получает короткую → делится ею.
-Второй сценарий: переход по короткой ссылке приводит на исходный адрес.
+A guest opens the page → pastes a long link → gets a short one → shares it. Second
+scenario: following a short link leads to the original address.
 
-## User stories с приоритетами
+## User stories with priorities
 
-| история | приоритет | блок |
+| story | priority | block |
 | --- | --- | --- |
-| Как гость, хочу сократить длинную ссылку без регистрации, чтобы быстро поделиться ей | must | api |
-| Как гость, хочу перейти по короткой ссылке и попасть на исходный адрес | must | api |
-| Как гость, хочу видеть статистику переходов, чтобы понимать, кликают ли по ссылке | nice | web |
+| As a guest, I want to shorten a long link without signing up, so I can share it quickly | must | api |
+| As a guest, I want to follow a short link and land on the original address | must | api |
+| As a guest, I want to see click statistics, so I know whether the link is used | nice | web |
 
-## DoD MVP
+## MVP Definition of Done
 
-Тесты зелёные, сокращение и переход проходят смоук в живом браузере, продукт запущен
-на тестовой площадке.
+Tests green, shortening and redirect pass a smoke test in a live browser, the product is
+running on the test platform.
 
-## Что НЕ делаем
+## What we are NOT doing
 
-Регистрацию, личный кабинет, свои домены, срок жизни ссылки.
+Registration, personal accounts, custom domains, link expiry.
 
-## Открытые вопросы
+## Open questions
 
-Нужен ли рейт-лимит на создание ссылок — решает владелец по ходу (Q001).
+Whether creating links needs a rate limit — the owner decides as we go (Q001).
