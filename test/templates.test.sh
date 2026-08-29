@@ -246,10 +246,10 @@ TG="$TEMPLATES_DIR/telegram-protocol.md"
 [[ -f "$TG" ]] || { echo "FAIL: шаблон не найден: $TG"; exit 1; }
 
 check_sections telegram-protocol.md "$TG" \
-  "Когда что отправляется" "Правила отправки" "Шаблоны" "Ответы владельца"
+  "When what gets sent" "Rules for sending" "Templates" "The owner's answers"
 
 # Все четыре типа сообщений из спеки §11 обязаны иметь свой шаблон.
-for msg in "❓ Вопрос" "✅ Блок готов" "⚠️ Алерт" "🏁 MVP готов"; do
+for msg in "❓ Question" "✅ Block done" "⚠️ Alert" "🏁 MVP ready"; do
   grep -qF "### $msg" "$TG" || {
     echo "FAIL: telegram-protocol.md — нет шаблона сообщения: $msg"
     exit 1
@@ -265,7 +265,7 @@ placeholders="$(grep -cE '\{\{[^}]+\}\}' "$TG" || true)"
 
 # Два правила, без которых протокол молча ломается: батчинг и поведение при
 # выключенном канале (вопрос всё равно должен попасть в questions.md).
-grep -qF 'пачкой, а не по одному' "$TG" || {
+grep -qF 'in batches, not one at a time' "$TG" || {
   echo "FAIL: telegram-protocol.md — нет правила о батчинге вопросов"
   exit 1
 }
@@ -277,8 +277,8 @@ grep -qF '`telegram: off`' "$TG" || {
 # Показ — единственный механизм под класс дефектов, который не ловит ни тест, ни
 # сверка со спекой: его видно и только видно. Пропадёт из протокола — пропадёт и
 # повод его слать, а класс вернётся к владельцу после стройки, как и раньше.
-grep -qF '👀 Показ' "$TEMPLATES_DIR/telegram-protocol.md" || {
-  echo "FAIL: telegram-protocol.md — нет типа сообщения «показ» (класс дефектов «нужен человек»)"
+grep -qF '👀 Look' "$TEMPLATES_DIR/telegram-protocol.md" || {
+  echo "FAIL: telegram-protocol.md — нет типа сообщения «показ» (Look) (класс дефектов «нужен человек»)"
   exit 1
 }
 

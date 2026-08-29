@@ -1,87 +1,89 @@
-<!-- telegram-protocol.md — что и когда система пишет владельцу, пока строит сама. Читается forge-build; шаблоны заполняются подстановкой {{...}}. Канал — только транспорт: истина о вопросах всегда в questions.md, а не в переписке. -->
+<!-- telegram-protocol.md — what the system writes to the owner, and when, while it builds on its own. Read by forge-build; the templates are filled in by substituting {{...}}. The channel is transport only: the truth about questions always lives in questions.md, never in the conversation. -->
 
-# Протокол сообщений владельцу
+# Protocol of messages to the owner
 
-Владелец не сидит рядом, пока идёт стройка. Поэтому сообщений должно быть мало,
-каждое — самодостаточное (понятное с телефона, без открывания репозитория), и ни
-одно не должно требовать от него разбираться, что вообще происходит.
+The owner is not sitting next to the build. So there must be few messages, each one
+self-contained (understandable from a phone, without opening the repository), and
+none of them may require working out what is going on in the first place.
 
-## Когда что отправляется
+## When what gets sent
 
-| Тип | Повод | Объём |
+| Type | Trigger | Size |
 |---|---|---|
-| ❓ Вопрос | Развилка, которую нельзя решить разумным дефолтом | контекст ≤ 3 строк + варианты |
-| ✅ Блок готов | Блок принят: тесты зелёные, смоук пройден | ≤ 5 строк |
-| ⚠️ Алерт | Стройка застряла, упёрлась в лимит или сломалась среда | ≤ 5 строк |
-| 🏁 MVP готов | Финиш: продукт запущен и проверен | ссылка + итог |
-| 👀 Показ | Принят блок, изменивший то, что видит человек: экран, текст для человека, порядок работы | 1–3 скриншота + одна фраза |
+| ❓ Question | A fork that cannot be settled with a sensible default | context ≤ 3 lines + options |
+| ✅ Block done | A block is accepted: tests green, smoke passed | ≤ 5 lines |
+| ⚠️ Alert | The build is stuck, hit a limit, or the environment broke | ≤ 5 lines |
+| 🏁 MVP ready | The finish: the product is running and verified | link + summary |
+| 👀 Look | An accepted block changed what a person sees: a screen, human-facing text, the order of work | 1–3 screenshots + one sentence |
 
-## Показ: зачем он вообще есть
+## The "look" message: why it exists at all
 
-Замер 61 дефекта, прорвавшегося мимо тестов, выделил класс в 13%, который не ловит
-**ни один** механизм системы: непонятный онбординг, два ряда одинаковых кнопок,
-пропавшая подсказка доступности, доки и локали, разошедшиеся с продуктом. Тест
-проверяет утверждение, которое кто-то заранее сформулировал, — а это никто не
-формулирует, потому что оно **видно и только видно**. Сверка со спекой проходит
-сценарий, и он проходится: путь работает, результат достигнут, продукт при этом
-неудобен или противоречив.
+A measurement of 61 defects that got past the tests isolated a class of 13% that
+**no** mechanism of the system catches: confusing onboarding, two rows of identical
+buttons, a missing accessibility hint, docs and locales that drifted away from the
+product. A test checks a claim someone formulated in advance — and nobody
+formulates these, because they are **visible and only visible**. A spec review walks
+a scenario, and the scenario walks: the path works, the result is reached, and the
+product is still awkward or self-contradictory.
 
-Поэтому показ — не «отчёт с картинкой», а единственный механизм под этот класс.
-Отсюда три требования к нему:
+So "look" is not a report with a picture; it is the only mechanism for that class.
+Hence three requirements:
 
-- **дёшев для владельца** — посмотреть и сказать одну фразу; не читать отчёт и не
-  проходить сценарий;
-- **показывает продукт, а не описание** — скриншот, а не путь к файлу и не список
-  изменений: смысл в том, чтобы увидеть с телефона, ничего не открывая;
-- **не блокирует стройку** — ушёл и пошли дальше; ответ подхватится на следующей
-  приёмке, как любой другой ответ владельца.
+- **cheap for the owner** — glance and say one sentence; not read a report, not walk
+  a scenario;
+- **shows the product, not a description** — a screenshot, not a file path and not a
+  list of changes: the point is to see it from a phone without opening anything;
+- **does not block the build** — sent and move on; the answer is picked up at the
+  next acceptance, like any other answer from the owner.
 
-## Правила отправки
+## Rules for sending
 
-- **Вопросы уходят пачкой, а не по одному.** Открытые вопросы копятся и
-  отправляются одним сообщением, когда завершается текущий фоновый агент. Пять
-  отдельных уведомлений подряд — это не «оперативно», это повод выключить бота.
-- **Один вопрос отправляется один раз.** Отправленный вопрос помечается в
-  `questions.md` как уже ушедший; напоминаний система не присылает — молчание
-  владельца не ошибка, вопрос просто ждёт.
-- **`telegram: off` в профиле — сообщения не отправляются вообще.** Вопрос всё
-  равно пишется в `questions.md`, стройка продолжается по правилу «блокируются
-  только зависимые задачи». Отсутствие канала не повод останавливаться.
-- **Канал — транспорт, истина — в файлах.** Если сообщение не доставилось,
-  состояние стройки от этого не меняется: `questions.md`, `decisions.md` и
-  `progress.md` остаются полными и без переписки.
-- **Отправка — вызовом канала по HTTP.** Канал — постоянная служба на площадке
-  владельца, а не инструмент внутри сессии. Адрес и секрет лежат в личном профиле:
-  `~/.claude/forge/channel.env` (`CHANNEL_URL`, `FORGE_SECRET`). Отправка:
+- **Questions go in batches, not one at a time.** Open questions accumulate and go
+  out as a single message when the current background agent finishes. Five separate
+  notifications in a row is not "responsive", it is a reason to turn the bot off.
+- **A question is sent once.** A sent question is marked in `questions.md` as
+  already gone; the system sends no reminders — the owner's silence is not an error,
+  the question is simply waiting.
+- **`telegram: off` in the profile — nothing is sent at all.** The question is still
+  written into `questions.md`, and the build continues under the rule "only the
+  dependent tasks are blocked". A missing channel is no reason to stop.
+- **The channel is transport; the truth is in the files.** If a message was not
+  delivered, the state of the build does not change: `questions.md`, `decisions.md`
+  and `progress.md` stay complete without the conversation.
+- **Sending is an HTTP call to the channel.** The channel is a standing service on
+  the owner's machine, not a tool inside a session. The address and the secret live
+  in the personal profile: `~/.claude/forge/channel.env` (`CHANNEL_URL`,
+  `FORGE_SECRET`). Sending:
 
   ```bash
   curl -s -X POST "$CHANNEL_URL/notify" \
     -H "Authorization: Bearer $FORGE_SECRET" -H 'content-type: application/json' \
-    -d '{"project":"<имя>","kind":"question|block|alert|done","text":"<текст>"}'
+    -d '{"project":"<name>","kind":"question|block|alert|done|show","text":"<text>"}'
   ```
 
-  Кому отправлять, канал знает сам — список разрешённых у него, не у системы.
-  **Ответ `2xx` — единственное доказательство отправки:** `502` означает, что
-  Telegram отказал, и такой вопрос считается неотправленным.
-- **Имя проекта — имя каталога репозитория**, и оно одинаково во всех трёх
-  вызовах (`notify`, `inbox`, `ack`):
+  Whom to send to, the channel knows by itself — the allow-list is its business, not
+  the system's. **A `2xx` response is the only proof of sending:** `502` means
+  Telegram refused, and such a question counts as not sent.
+- **The project name is the repository directory's name**, and it is identical in
+  all three calls (`notify`, `inbox`, `ack`):
 
   ```bash
   project="$(basename "$(git rev-parse --show-toplevel)")"
   ```
 
-  Берётся именно так, а не из документов: имя должно быть доступно в любой
-  сессии без чтения спеки и не зависеть от того, как проект назвали в тексте.
-  Разъехавшееся имя ломает адресацию молча — вопрос уходит от одного имени, а
-  ответ ищется под другим, и стройка ждёт ответа, который лежит рядом.
-- **Формат — обычный текст.** Режим разметки требует экранирования служебных
-  символов, и незаэкранированный символ роняет отправку целиком. Для служебных
-  уведомлений разметка того не стоит.
-- **Ответы владельца забираются по требованию**, а не приходят в сессию:
-  `GET $CHANNEL_URL/inbox?project=<имя>` отдаёт неразобранное, адресованное
-  этому проекту, `POST $CHANNEL_URL/ack` с `{"ids":[…],"project":"<имя>"}`
-  помечает разобранным. Помечать **после** того, как ответ применён: падение
-  между «прочитал» и «применил» иначе съедает ответ молча.
+  Taken exactly this way rather than from the documents: the name must be available
+  in any session without reading the spec, and must not depend on what the project
+  was called in prose. A name that drifts breaks addressing silently — the question
+  goes out under one name and the answer is looked for under another, and the build
+  waits for an answer that is lying right there.
+- **The format is plain text.** A markup mode requires escaping special characters,
+  and one unescaped character kills the whole send. For service notifications the
+  markup is not worth it.
+- **The owner's answers are fetched on demand**, they do not arrive in the session:
+  `GET $CHANNEL_URL/inbox?project=<name>` returns what is unprocessed and addressed
+  to this project, `POST $CHANNEL_URL/ack` with `{"ids":[…],"project":"<name>"}`
+  marks it processed. Mark it **after** the answer has been applied: otherwise a
+  crash between "read it" and "applied it" eats the answer silently.
 
   ```bash
   curl -s "$CHANNEL_URL/inbox?project=$project" -H "Authorization: Bearer $FORGE_SECRET"
@@ -90,149 +92,158 @@
     -d "{\"ids\":[12],\"project\":\"$project\"}"
   ```
 
-  «По требованию» означает, что требование обязан создать сам скилл: канал
-  никого не будит и не напоминает о себе. Поэтому забор входящих привязан к
-  местам, где работа и так останавливается, — приёмка блока и возврат к файлам
-  состояния (`forge-build`, шаг 4). Без такой привязки входящие не забираются
-  никогда: повода не возникает. Проверено на прогоне 13.08.2026 — ответ владельца
-  пролежал в канале пять дней при живом канале и работающей стройке.
-- **Если канал не отвечает — сказать сразу, а не молча.** Проверка живости —
-  `GET $CHANNEL_URL/healthz` без секрета; она отдаёт `503`, если опрос Telegram
-  выбит или база не отвечает, и показывает, когда была последняя удачная выборка.
-  Канал недоступен → предупреждение в терминал «вопросы только в questions.md», и
-  стройка идёт дальше. Незамеченное отсутствие уведомлений — худший из возможных
-  вариантов: владелец думает, что всё идёт, а система стоит с вопросом.
+  "On demand" means the skill itself must create the demand: the channel wakes
+  nobody and never reminds anyone of itself. That is why fetching is tied to the
+  places where work stops anyway — accepting a block and returning to the state
+  files (`forge-build`, step 4). Without that tie the inbox is never fetched: no
+  occasion arises. Verified on the run of 13.08.2026 — an answer from the owner lay
+  in the channel for five days with a healthy channel and a running build.
+- **If the channel does not answer — say so immediately, not silently.** The
+  liveness check is `GET $CHANNEL_URL/healthz` without the secret; it returns `503`
+  if the Telegram polling has been knocked out or the database is not answering, and
+  it shows when the last successful fetch happened. Channel unreachable → a warning
+  in the terminal that questions will only be in `questions.md`, and the build goes
+  on. Unnoticed absence of notifications is the worst possible outcome: the owner
+  thinks things are moving while the system stands with a question.
 
-## Адресация ответов: одна очередь на все стройки
+## Addressing answers: one queue for all builds
 
-Очередь ответов у канала общая. Пока строится один проект, это незаметно; как
-только строятся два, встаёт вопрос, чей ответ забирает тот, кто спросил первым.
+The channel's answer queue is shared. With one project being built that goes
+unnoticed; as soon as there are two, the question arises whose answer is taken by
+whoever asks first.
 
-- **Ответ адресуется реплаем.** Владелец отвечает реплаем на сообщение канала —
-  канал по id сообщения находит в журнале отправленного, чей это был вопрос, и
-  помечает ответ этим проектом. Поэтому в сообщениях типов `question` и `alert`
-  канал сам добавляет строку с просьбой ответить реплаем.
-- **`GET /inbox?project=<имя>` отдаёт только своё** — свои ответы и безадресные.
-  Без параметра отдаётся всё: старый клиент продолжает работать, но и забирает
-  чужое, как раньше. Параметр обязателен к использованию.
-- **`POST /ack` с `project` не пометит чужое.** Чужие id возвращаются в поле
-  `rejected` со статусом `409`; свои при этом помечаются. `409` — не повод
-  повторять запрос: это сообщение о том, что часть ответов адресована не тебе.
-- **Ответ не реплаем адреса не имеет** и виден всем стройкам. Достаться не тому
-  плохо, но не достаться никому — хуже: безадресный ответ иначе просто пропал бы.
-  Владельцу канал в подтверждении так и пишет — что не понял адресата.
-- **Чужой ответ не применяй, даже если он видим.** Безадресный ответ, который
-  явно относится к другому проекту, оставляй в очереди неразобранным.
+- **An answer is addressed by replying.** The owner replies to a channel message —
+  the channel finds in its outbound log, by message id, whose question it was, and
+  marks the answer with that project. That is why for `question` and `alert` the
+  channel itself appends a line asking for a reply.
+- **`GET /inbox?project=<name>` returns only what is yours** — your answers and the
+  unaddressed ones. Without the parameter everything is returned: an old client keeps
+  working, but also takes what is not its own, as before. Using the parameter is
+  mandatory.
+- **`POST /ack` with `project` will not mark what is not yours.** Foreign ids come
+  back in the `rejected` field with status `409`; yours are marked all the same.
+  `409` is not a reason to retry: it says that some answers are addressed elsewhere.
+- **An answer that is not a reply has no address** and is visible to every build.
+  Reaching the wrong build is bad, but reaching nobody is worse: an unaddressed
+  answer would otherwise simply vanish. The channel says exactly that in its
+  confirmation to the owner — that it could not tell who it was for.
+- **Do not apply someone else's answer even when you can see it.** An unaddressed
+  answer that clearly concerns another project stays in the queue, unprocessed.
 
-Проверено на разборе 26.08.2026: до этой адресации диспетчер, спросивший первым,
-забирал чужой ответ, применял его к своим вопросам и помечал разобранным — второй
-проект ждал вечно, а первый ехал не туда, и оба молчали.
+Verified in the review of 26.08.2026: before this addressing existed, whichever
+dispatcher asked first took someone else's answer, applied it to its own questions
+and marked it processed — the second project waited forever, the first went the
+wrong way, and both stayed silent.
 
-## Шаблоны
+## Templates
 
-### 👀 Показ
-
-```
-👀 Посмотри · {{проект}}
-
-{{что появилось или изменилось — одна фраза, языком продукта}}
-
-Если что-то выглядит не так — ответь реплаем одной фразой.
-```
-
-Скриншоты уходят полем `photos` (base64, до 10 штук, до 5 МБ каждый); подпись
-кладётся на первую картинку. **Показы копятся и уходят пачкой**, как вопросы:
-показ на каждый принятый блок превращается в поток, который перестают открывать —
-а это ровно тот исход, ради предотвращения которого механизм и заведён.
-
-### ❓ Вопрос (пачкой)
+### 👀 Look
 
 ```
-❓ Нужно твоё решение ({{количество}} шт.)
+👀 Take a look · {{project}}
 
-{{номер}}. {{вопрос одной фразой}}
-   Контекст: {{почему это развилка, 1–3 строки}}
-   1) {{вариант 1}}
-   2) {{вариант 2}}
-   Рекомендую: {{номер варианта}} — {{почему}}
-   Блокирует: {{id задач или «ничего, работа идёт дальше»}}
+{{what appeared or changed — one sentence, in the product's language}}
 
-Ответить можно номером, своим текстом или «решай сам».
+If something looks wrong — reply with one sentence.
 ```
 
-Рекомендация обязательна, если она вообще возможна: ответ «решай сам» должен
-быть исполним сразу, а не превращаться в ещё один круг вопросов.
+Screenshots go in the `photos` field (base64, up to 10, up to 5 MB each); the
+caption is attached to the first picture. **Look messages accumulate and go in a
+batch**, like questions: one per accepted block turns into a stream that people stop
+opening — which is exactly the outcome the mechanism exists to prevent.
 
-### ✅ Блок готов
-
-```
-✅ Блок «{{имя блока}}» готов
-
-Сделано: {{что появилось, одной фразой}}
-Проверено: {{какой смоук прошёл — фактическая команда или сценарий}}
-Дальше: {{какие блоки стартовали следом, или «ждём ответа на {{id вопроса}}»}}
-```
-
-### ⚠️ Алерт
+### ❓ Question (batched)
 
 ```
-⚠️ {{что случилось}}
+❓ Your decision needed ({{count}})
 
-Причина: {{коротко, без стектрейсов}}
-Что делаю: {{продолжаю другими задачами / откатываю / стройка остановлена и ждёт тебя}}
-От тебя нужно: {{конкретное действие, или «ничего, продолжу сама»}}
+{{number}}. {{the question in one sentence}}
+   Context: {{why this is a fork, 1–3 lines}}
+   1) {{option 1}}
+   2) {{option 2}}
+   Recommended: {{option number}} — {{why}}
+   Blocks: {{task ids, or "nothing, work continues"}}
+
+You can answer with a number, in your own words, or "decide for me".
 ```
 
-Алерт без последней строки бесполезен: владелец должен понять из сообщения, надо
-ли ему что-то делать прямо сейчас.
+A recommendation is mandatory whenever one is possible at all: the answer "decide
+for me" must be executable straight away, not turn into another round of questions.
 
-«Стройка остановлена и ждёт тебя» пишется **только** так — прямо. Формулировки
-вида «пауза с автопродолжением» здесь стояли раньше и врали: возвращать стройку в
-работу было нечем, и владелец, прочитав про автопродолжение, спокойно ждал
-несколько часов того, что не могло случиться само.
-
-### 🏁 MVP готов
+### ✅ Block done
 
 ```
-🏁 {{имя проекта}} — MVP готов
+✅ Block "{{block name}}" is done
 
-Открыть: {{ссылка}}
-Демо-вход: {{учётные данные демо-режима или «без входа»}}
-Сверка со спекой: {{итог converge — сколько итераций, что расходится}}
-Известные расхождения: {{список или «нет»}}
+Done: {{what appeared, in one sentence}}
+Verified: {{which smoke passed — the actual command or scenario}}
+Next: {{which blocks started after it, or "waiting for an answer to {{question id}}"}}
 ```
 
-## Ответы владельца
+### ⚠️ Alert
 
-- Ответ — свободным текстом, номером варианта или «решай сам».
-- **«Решай сам»** → система принимает решение, пишет его в `decisions.md` с
-  пометкой «принято автономно» и разблокирует зависимые задачи. Такое решение
-  показывается владельцу в сводке о ходе стройки — он узнаёт о нём, даже если
-  забыл про вопрос.
-- Ответ переносится в `questions.md` (статус `answered`) до того, как по нему
-  начнётся работа: если сессия упадёт сразу после ответа, ответ не потеряется.
+```
+⚠️ {{what happened}}
 
-## Один раз перед первой стройкой
+Cause: {{briefly, no stack traces}}
+Doing now: {{continuing with other tasks / rolling back / the build has stopped and is waiting for you}}
+Needed from you: {{a concrete action, or "nothing, I will carry on"}}
+```
 
-Канал — **постоянная служба**, поднимается один раз на площадке владельца и живёт
-там. В сессиях Claude Code ничего включать не нужно; развёртывание и проверка
-описаны в `channel/README.md` репозитория системы.
+An alert without the last line is useless: from the message alone the owner must
+understand whether anything is required of them right now.
 
-1. **Развернуть канал** на площадке владельца и проверить **с рабочей машины**, а
-   не с самой площадки: `GET $CHANNEL_URL/healthz` должен вернуть `200`. Ответ
-   изнутри площадки ничего не доказывает — порт может быть закрыт именно снаружи.
-2. **Положить адрес и секрет в личный профиль** — `~/.claude/forge/channel.env`
-   (`CHANNEL_URL`, `FORGE_SECRET`), права `600`. В репозиторий это не попадает.
-3. **`telegram: on` в профиле** — иначе система сознательно не отправляет ничего
-   (см. правила выше).
-4. **Плагин Telegram в Claude Code должен быть ВЫКЛЮЧЕН**
-   (`enabledPlugins` в `~/.claude/settings.json`). Это не вкусовщина, а
-   обязательное условие: плагин поднимает **второго** слушателя того же бота, а
-   Telegram допускает одного. Второй выбивает первого ответом `409`, и **выбитый
-   не падает, а молча перестаёт получать сообщения** — бот при этом выглядит живым.
-   Проверено на живом канале: приём лежал двенадцать минут, пока плагин работал.
+"The build has stopped and is waiting for you" is written **only** that plainly.
+Phrasing like "paused, will resume automatically" used to stand here and it lied:
+there was nothing that could bring the build back, and the owner, having read about
+automatic resumption, calmly waited several hours for something that could not
+happen by itself.
 
-   Отдельная ловушка, из-за которой это легко пропустить: плагин включается
-   **настройкой, а не флагом запуска**. То есть он поднимается в каждой сессии
-   сам, и «перезапустить сессию без флага» не помогает — помогает только
-   выключить его в настройках.
+### 🏁 MVP ready
+
+```
+🏁 {{project name}} — the MVP is ready
+
+Open: {{link}}
+Demo access: {{demo-mode credentials or "no sign-in"}}
+Spec review: {{the converge result — how many iterations, what diverges}}
+Known discrepancies: {{list or "none"}}
+```
+
+## The owner's answers
+
+- An answer is free text, an option number, or "decide for me".
+- **"Decide for me"** → the system makes the decision, writes it into
+  `decisions.md` marked "decided autonomously", and unblocks the dependent tasks.
+  Such a decision is shown to the owner in the build status summary — they learn of
+  it even if they forgot the question.
+- The answer is transferred into `questions.md` (status `answered`) before any work
+  based on it begins: if the session dies right after the answer, the answer is not
+  lost.
+
+## Once, before the first build
+
+The channel is a **standing service**: it is brought up once on the owner's machine
+and lives there. Nothing needs switching on inside Claude Code sessions; deployment
+and verification are described in `channel/README.md` of the system's repository.
+
+1. **Bring the channel up** and check it **from the working machine**, not from the
+   machine hosting it: `GET $CHANNEL_URL/healthz` must return `200`. An answer from
+   inside the host proves nothing — the port may be closed precisely from outside.
+2. **Put the address and the secret into the personal profile** —
+   `~/.claude/forge/channel.env` (`CHANNEL_URL`, `FORGE_SECRET`), permissions `600`.
+   None of this goes into the repository.
+3. **`telegram: on` in the profile** — otherwise the system deliberately sends
+   nothing (see the rules above).
+4. **The Telegram plugin in Claude Code must be OFF**
+   (`enabledPlugins` in `~/.claude/settings.json`). This is not a matter of taste but
+   a hard requirement: the plugin raises a **second** listener for the same bot, and
+   Telegram allows one. The second knocks out the first with a `409`, and **the one
+   knocked out does not crash — it silently stops receiving messages** while the bot
+   still looks alive. Verified on the live channel: receiving was down for twelve
+   minutes while the plugin was running.
+
+   A separate trap that makes this easy to miss: the plugin is switched on by a
+   **setting, not a launch flag**. That is, it comes up by itself in every session,
+   and "restart the session without the flag" does not help — only switching it off
+   in the settings does.
