@@ -138,14 +138,14 @@ check_template research-report.md \
 
 # Список секций — дословно из брифа Task 10 (Interfaces).
 check_template retro.md \
-  "Что застревало" "Вопросы анкеты, которые не сработали" "Где диспетчер тупил" "Предложения"
+  "Where things got stuck" "Intake questions that did not work" "Where the dispatcher blundered" "Proposals"
 
 # Ретро существует ради беклога системы: пункты уходят задачами в репозиторий
 # самой системы, а не продукта. Без этого правила шаблон превращается в текст,
 # который никто не читает, а шероховатости встречают следующий проект заново.
 # Имя конкретного репозитория здесь НЕ проверяется намеренно: оно определяется из
 # remote и не должно быть зашито в ядро (иначе чужой форк пишет в чужой беклог).
-grep -qF 'беклоге репозитория самой системы' "$TEMPLATES_DIR/retro.md" || {
+grep -qF "backlog of **the system's own" "$TEMPLATES_DIR/retro.md" || {
   echo "FAIL: retro.md — не сказано, что пункты уходят задачами в беклог самой системы, а не проекта"
   exit 1
 }
@@ -360,10 +360,10 @@ done
 STYLE="$TEMPLATES_DIR/issue-style.md"
 [[ -f "$STYLE" ]] || { echo "FAIL: нет стандарта трекера: $STYLE"; exit 1; }
 for rule in \
-  'Дословные цитаты из переписки' \
-  'Имена личной и рабочей инфраструктуры' \
-  'Персональные данные' \
-  'Без оценки собственной работы'
+  'Verbatim quotes from conversations' \
+  'Names of personal and work infrastructure' \
+  'Personal data' \
+  'No assessment of one'
 do
   grep -qF "$rule" "$STYLE" || {
     echo "FAIL: issue-style.md — потеряно правило: $rule"

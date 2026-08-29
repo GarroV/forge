@@ -1,59 +1,62 @@
-<!-- retro.md — разбор одного прогона: что мешало САМОЙ системе строить. Заполняется в конце стройки, сразу после сообщения о готовности MVP; кладётся в docs/forge/retro.md репозитория проекта. Каждый пункт становится задачей в беклоге репозитория самой системы (того, из которого она установлена) — ретро, из которого не вышло ни одной задачи, не состоялось. -->
+<!-- retro.md — the review of one run: what got in the way of THE SYSTEM building. Filled in at the end of the build, right after the MVP-ready message; placed in docs/forge/retro.md of the project repository. Every item becomes an issue in the backlog of the system's own repository (the one it was installed from) — a retro that produced no issues did not happen. -->
 
-# Ретро прогона
+# Run retro
 
-<!-- Имя проекта, дата прогона, итог одной строкой: MVP готов / готов с расхождениями / прогон остановлен и почему. -->
+<!-- Project name, run date, the outcome in one line: MVP ready / ready with discrepancies / run stopped and why. -->
 
-## Как заполнять
+## How to fill this in
 
-- **Про систему, а не про продукт.** Недоделки самого продукта — это задачи в его
-  `tasks.md` и работа сверки со спекой. Здесь только то, что мешало системе
-  строить: формулировки шаблонов, порядок шагов, правила приёмки, уведомления.
-- **По фактам прогона, а не по памяти.** Источники: журнал `progress.md` (где
-  стояло), `questions.md` (какие вопросы пришлось задать), `decisions.md` (что
-  решено без владельца), история коммитов, возвраты блоков на доработку.
-- **Каждый пункт — заготовка задачи:** что произошло / где именно (шаг, фаза,
-  файл) / чего это стоило прогону / что предлагается изменить. Пункт, из которого
-  нельзя сделать задачу, — это жалоба, а не ретро.
-- **Формулировки — по `templates/issue-style.md`.** Пункт уезжает в трекер, а его
-  читают посторонние: имя прогона нейтральное, без цитат из переписки, без имён
-  личной инфраструктуры и без персональных данных.
-- **Пустая секция — нормальный результат, но пишется явно** словом «нечего».
-  Секция, оставленная пустой молча, читается как забытая.
-- **Честно про себя.** Место, где диспетчер сам затупил, ценнее любого замечания
-  к шаблону: кроме него, этого не увидит никто.
+- **About the system, not the product.** Unfinished parts of the product belong in
+  its `tasks.md` and in the spec review. Here goes only what got in the way of the
+  system building: the wording of templates, the order of steps, acceptance rules,
+  notifications.
+- **From the facts of the run, not from memory.** Sources: the `progress.md` log
+  (where it stalled), `questions.md` (which questions had to be asked),
+  `decisions.md` (what was decided without the owner), the commit history, blocks
+  sent back for rework.
+- **Every item is a draft issue:** what happened / where exactly (step, phase,
+  file) / what it cost the run / what is proposed to change. An item you cannot
+  turn into an issue is a complaint, not a retro.
+- **Wording follows `templates/issue-style.md`.** The item travels into a tracker
+  that outsiders read: a neutral run name, no quotes from conversations, no names
+  of personal infrastructure, no personal data.
+- **An empty section is a fine result, but it is written out** with the word
+  "nothing". A section left silently empty reads as forgotten.
+- **Honest about yourself.** The place where the dispatcher itself blundered is
+  worth more than any remark about a template: nobody else will ever see it.
 
-## Что застревало
+## Where things got stuck
 
-<!-- Где прогон терял время: заблокированные задачи, ожидание ответа владельца, упавшие блоки, конфликты слияния, сломанная среда, лимиты запросов. Для каждого — сколько простояло и что было первопричиной. Пример: «блок web стоял 40 минут на Q003, хотя вопрос закрывался разумным дефолтом — правила, когда решать самому, не хватило». -->
+<!-- Where the run lost time: blocked tasks, waiting for the owner's answer, dead agents, merge conflicts, a broken environment, rate limits. For each — how long it stood and what the root cause was. Example: "block web stood for 40 minutes on Q003, although the question had a reasonable default — the rule for when to decide alone was missing". -->
 
-1. <!-- что застряло / где / чего это стоило / что менять -->
+1. <!-- what got stuck / where / what it cost / what to change -->
 
-## Вопросы анкеты, которые не сработали
+## Intake questions that did not work
 
-<!-- Вопросы стартовой анкеты, давшие негодный результат: непонятые владельцем, с ответом «не знаю» там, где нужен был точный ответ, пропущенные по условию и всплывшие в стройке, а также вопросы, которых в анкете не хватило вовсе. Пример: «доступ к базе помечен ✅ без смоука — вопрос не требует команды проверки явно». -->
+<!-- Questions from the starting intake that produced a poor result: misunderstood by the owner, answered "I don't know" where a precise answer was needed, skipped by a condition and resurfacing during the build, and questions the intake lacked entirely. Example: "database access marked ✅ with no smoke test — the question does not explicitly ask for a verification command". -->
 
-1. <!-- вопрос / что пошло не так / как переформулировать или что добавить -->
+1. <!-- the question / what went wrong / how to rephrase it or what to add -->
 
-## Где диспетчер тупил
+## Where the dispatcher blundered
 
-<!-- Собственные ошибки ведения стройки: спросил владельца о том, что решалось дефолтом; наоборот, решил сам то, что стоило спросить; принял блок с необновлёнными документами; перечитывал код вместо файлов состояния; потерял или продублировал задачу; объявил проверенным то, что не проверял. -->
+<!-- Its own mistakes running the build: asked the owner about something a default covered; conversely, decided alone what should have been asked; accepted a block with stale documents; re-read code instead of the state files; lost or duplicated a task; declared something verified that was not. -->
 
-1. <!-- что сделал не так / из-за чего / чего не хватило в инструкции -->
+1. <!-- what was done wrong / because of what / what the instruction lacked -->
 
-## Предложения
+## Proposals
 
-<!-- Что именно изменить в системе: шаблоны, порядок шагов, правила приёмки, протокол уведомлений, тесты. Одно изменение на пункт: задача «улучшить всё» не выполняется никогда. -->
+<!-- What exactly to change in the system: templates, the order of steps, acceptance rules, the notification protocol, tests. One change per item: an issue called "improve everything" never gets done. -->
 
-1. <!-- предложение / какой пункт выше оно чинит -->
+1. <!-- proposal / which item above it fixes -->
 
-## Куда это уходит
+## Where this goes
 
-Каждый пункт выше — отдельная задача в беклоге **репозитория самой системы**
-(того, из которого она установлена), а не в репозитории проекта: чинится система, а не продукт. Критичное правится сразу,
-остальное живёт в беклоге. Дубликаты не заводятся — если задача уже есть, в
-таблицу идёт ссылка на существующую.
+Every item above becomes a separate issue in the backlog of **the system's own
+repository** (the one it was installed from), not in the project's repository: it
+is the system being fixed, not the product. Critical things are fixed immediately,
+the rest lives in the backlog. Duplicates are not created — if an issue already
+exists, the table gets a link to it.
 
-| пункт ретро | задача в беклоге системы |
+| retro item | issue in the system's backlog |
 |---|---|
-<!-- | Что застревало №1 | <владелец>/<репозиторий системы>#42 | -->
+<!-- | Where things got stuck №1 | <owner>/<system repository>#42 | -->

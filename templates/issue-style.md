@@ -1,65 +1,65 @@
-# Как система пишет в трекер
+# How the system writes in a tracker
 
-<!-- Стандарт для задач и комментариев, которые система создаёт на GitHub — в
-     своём беклоге и в беклоге проекта. Это не бланк для заполнения: правила
-     применяются при каждом создании задачи и каждом комментарии. Причина
-     существования файла: без стандарта тон задаётся каждым агентом заново, и
-     трекер расходится от рабочего документа до пересказа собственных заслуг. -->
+<!-- The standard for issues and comments the system creates on GitHub — in its own
+     backlog and in a project's backlog. This is not a form to fill in: the rules
+     apply to every issue created and every comment written. Why the file exists:
+     without a standard every agent sets the tone anew, and a tracker drifts from a
+     working document into a retelling of one's own merits. -->
 
-Трекер читают посторонние: коллеги, будущие участники, случайный посетитель
-публичного репозитория. Задача в нём — рабочий документ, а не сообщение владельцу
-и не отчёт о проделанной работе.
+Trackers are read by outsiders: colleagues, future contributors, a chance visitor to
+a public repository. An issue in one is a working document, not a message to the
+owner and not a report of work done.
 
-## Состав задачи
+## What an issue contains
 
-| Часть | Содержание |
+| Part | Content |
 |---|---|
-| Заголовок | компонент и факт: что не работает или что нужно сделать. Одна строка, без эмодзи и без вывода морали в конце |
-| Что происходит | наблюдаемое поведение: дата, место в коде, цифры, текст ошибки |
-| Почему это дефект | следствие, а не оценка |
-| Что сделать | конкретные правки, пронумерованные |
-| Контекст | где и когда найдено, чем проверено |
+| Title | the component and the fact: what does not work, or what needs doing. One line, no emoji, no moral drawn at the end |
+| What happens | observable behaviour: date, place in the code, numbers, the error text |
+| Why it is a defect | the consequence, not an assessment |
+| What to do | concrete changes, numbered |
+| Context | where and when it was found, how it was verified |
 
-Закрывающий комментарий — что изменилось и чем проверено, со ссылкой на коммит.
-Не пересказ пути к решению.
+The closing comment says what changed and how it was verified, with a link to the
+commit. Not a retelling of the road to the solution.
 
-## Тон
+## Tone
 
-- **Третье лицо и факты.** Не «я нашёл», «предлагаю», «оставляю задачу
-  открытой», а «найдено», «предлагается», «задача остаётся открытой».
-- **Владелец — один из читателей, а не адресат.** Обращения «тебе», «твоих
-  правок», «хорошая новость» в трекере не используются: то, что нужно от
-  владельца, пишется как требование к задаче.
-- **Без оценки собственной работы.** «Приёмка имеет зубы», «получилось лучше
-  замысла», «правила, добытые дорогой ценой» — убрать. Что механизм работает,
-  показывает описание проверки, а не прилагательное.
-- **Без афоризма вместо аргумента.** «Иначе это не план, а надежда» заменяется
-  тем, что имелось в виду: «план без способа откатиться нельзя проверить».
-- **Формулировка не длиннее факта.** Если предложение можно сократить, не потеряв
-  проверяемого утверждения, — сократить.
+- **Third person and facts.** Not "I found", "I suggest", "I am leaving the issue
+  open", but "found", "proposed", "the issue stays open".
+- **The owner is one of the readers, not the addressee.** "your fixes", "good news"
+  and the like are not used in a tracker: whatever is needed from the owner is
+  written as a requirement of the issue.
+- **No assessment of one's own work.** "acceptance has teeth", "it came out better
+  than intended", "rules bought at a high price" — remove them. That a mechanism
+  works is shown by the description of how it was verified, not by an adjective.
+- **No aphorism in place of an argument.** "Otherwise it is not a plan but a hope"
+  is replaced by what was meant: "a plan with no way back cannot be verified".
+- **No wording longer than the fact.** If a sentence can be shortened without
+  losing a checkable claim — shorten it.
 
-## Что в трекер не попадает никогда
+## What never goes into a tracker
 
-Правило действует независимо от видимости репозитория: видимость меняется, а
-история правок остаётся доступной. Затирание тела задачи задним числом не
-помогает.
+The rule holds regardless of the repository's visibility: visibility changes, and
+the edit history stays available. Blanking an issue body after the fact does not
+help.
 
-1. **Дословные цитаты из переписки с владельцем.** Пересказать смысл — можно,
-   скопировать сообщение — нет.
-2. **Имена личной и рабочей инфраструктуры**: серверов, сетей, соседних
-   проектов, чужих репозиториев. Прогон называется нейтрально («пилотный
-   проект»), машины — ролями («домашний сервер», «рабочая машина»). Список
-   запрещённых имён — тот же, что для проверки чистоты ядра:
+1. **Verbatim quotes from conversations with the owner.** Paraphrasing the meaning
+   is fine; copying the message is not.
+2. **Names of personal and work infrastructure**: servers, networks, neighbouring
+   projects, other people's repositories. A run is named neutrally ("the pilot
+   project"), machines by role ("the home server", "the working machine"). The list
+   of forbidden names is the same one used for the core-purity check:
    `~/.claude/forge/private-names.txt`.
-3. **Персональные данные и их описание по составу.** Для постановки задачи
-   достаточно «файл с персональными данными»; перечислять, какие именно поля и
-   про сколько человек, не нужно.
-4. **Секреты и внутренние адреса** — включая те, которые «всё равно уже
-   недействительны».
+3. **Personal data and descriptions of what it consists of.** "a file with personal
+   data" is enough to state an issue; listing which fields and about how many people
+   is not needed.
+4. **Secrets and internal addresses** — including the ones that are "no longer valid
+   anyway".
 
-## Находка по безопасности
+## A security finding
 
-Перед созданием задачи проверяется видимость репозитория (`gh repo view` с
-запросом поля `visibility`). Публичный репозиторий и незакрытая уязвимость →
-приватный security advisory через API, а в трекер — нейтральная строка без
-рецепта воспроизведения.
+Before creating an issue the repository's visibility is checked (`gh repo view`
+requesting the `visibility` field). A public repository with an open vulnerability →
+a private security advisory through the API, and a neutral line in the tracker with
+no recipe for reproducing it.
