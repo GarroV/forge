@@ -46,10 +46,10 @@ done
 # блок-агента под своим сообщением. Бриф каждый раз пишет тот, кто запускает;
 # определение роли агент читает при каждом запуске сам, поэтому форсер живёт здесь.
 declare -a ROLE_RULES=(
-  'forge-executor.md|в общей копии — не коммить|в общей копии коммит делает блок-агент'
-  'forge-executor.md|Работаешь в своей копии|в своей копии работа не переедет без коммита'
+  'forge-executor.md|shared copy — do not commit|в общей копии коммит делает блок-агент'
+  'forge-executor.md|your own copy of the repository|в своей копии работа не переедет без коммита'
   'forge-executor.md|git clean|чужие незакоммиченные правки не откатываются командами git'
-  'forge-block-agent.md|перечислением путей|сплошной add забирает файлы исполнителей'
+  'forge-block-agent.md|by naming paths|сплошной add забирает файлы исполнителей'
 )
 for entry in "${ROLE_RULES[@]}"; do
   IFS='|' read -r role_file rule why <<< "$entry"
