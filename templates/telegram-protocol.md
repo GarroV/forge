@@ -6,6 +6,17 @@ The owner is not sitting next to the build. So there must be few messages, each 
 self-contained (understandable from a phone, without opening the repository), and
 none of them may require working out what is going on in the first place.
 
+**Messages go out in the owner's language — the `language` key of the profile — not
+in the language of this document.** The split is deliberate: English is the canon for
+what lives in the repository, because a repository is read by people the system was
+handed to; the channel and the terminal talk to one specific person, in their
+language. This file is English because it is a document; the text it produces is not.
+
+That distinction is easy to lose, and losing it looks like this: the channel wraps
+every message in its own header ("❓ Нужно решение", the reply hint), and if the body
+arrives in another language the owner gets one message in two languages. Which is
+exactly what happened after this template was translated.
+
 ## When what gets sent
 
 | Type | Trigger | Size |
@@ -136,6 +147,11 @@ and marked it processed — the second project waited forever, the first went th
 wrong way, and both stayed silent.
 
 ## Templates
+
+**The shape below is fixed; the wording is rendered in the owner's language.** Field
+labels — "Context", "Recommended", "Blocks", "Done", "Verified", "Next" — are shown
+here in the document's language, not in the wire format. Sending them verbatim to a
+Russian-speaking owner is a defect, not fidelity to the template.
 
 ### 👀 Look
 
