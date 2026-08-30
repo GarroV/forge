@@ -72,6 +72,47 @@ MARKER_MAX_AGE = timedelta(days=7)
 TASK_ROW = re.compile(r"^\|\s*(T\d{3})\s*\|([^|]*)\|([^|]*)\|([^|]*)\|")
 
 
+# Порог, за которым стройку продолжать нельзя: лимит подписки почти выбран. Цифра
+# и переменная окружения общие со сторожем лимита в самом харнессе — два
+# механизма, расходящиеся в том, что считать «на исходе», хуже одного.
+LIMIT_PCT = int(os.environ.get("CLAUDE_USAGE_SAVE_THRESHOLD", "95"))
+
+# Единица времени в имени окна отличает настоящий лимит подписки от служебных
+# записей под кодовыми именами, лежащих в том же снимке: любая из них на 100%
+# остановила бы стройку без причины.
+LIMIT_WINDOW_UNITS = ("hour", "day", "week", "month")
+
+
+def usage_pressure():
+    """Худшее окно лимита подписки, если оно за порогом, иначе None.
+
+    Claude Code держит снимок утилизации окон в `~/.claude.json` и обновляет его
+    сам, но модели этот снимок в контекст не приходит: изнутри стройки лимит
+    невидим ровно до момента, когда ход просто перестаёт уезжать. Нет снимка,
+    битый файл, незнакомый формат — считаем, что давления нет: сторож,
+    останавливающий стройку по догадке, вреднее отсутствующего.
+    """
+    try:
+        with open(Path(os.path.expanduser("~")) / ".claude.json", encoding="utf-8") as fh:
+            cached = json.load(fh).get("cachedUsageUtilization") or {}
+        windows = cached.get("utilization") or {}
+    except Exception:
+        return None
+
+    worst = None
+    for name, value in windows.items():
+        if not isinstance(value, dict):
+            continue
+        if not any(unit in name for unit in LIMIT_WINDOW_UNITS):
+            continue
+        pct = value.get("utilization")
+        if not isinstance(pct, (int, float)):
+            continue
+        if worst is None or pct > worst[1]:
+            worst = (name, int(pct))
+    return worst if worst and worst[1] >= LIMIT_PCT else None
+
+
 def builds_dir() -> Path:
     return Path(os.path.expanduser("~")) / ".claude" / "forge" / "builds"
 
@@ -228,6 +269,41 @@ def decide(payload: dict) -> None:
         release("маркер принадлежит другой сессии")
     if not owner:
         marker["session_id"] = session
+        write_marker(path, marker)
+
+    # Лимит подписки на исходе: продолжать стройку нечем — следующий ход может
+    # не уехать вовсе. Обрыв посреди волны стоит дороже её незавершённости:
+    # задачи остаются in_progress, и следующая сессия не знает, брошены они или
+    # делаются прямо сейчас. Поэтому ход удерживается ровно один раз — ради
+    # записи состояния, — а дальше сторож молчит: удержания на исходе лимита
+    # тратят то немногое, что осталось, и ничего не строят.
+    pressure = usage_pressure()
+    if pressure and marker.get("limit_saved_at"):
+        release(
+            f"лимит подписки на исходе ({pressure[0]} {pressure[1]}%) — "
+            "состояние уже сохранено"
+        )
+    if pressure:
+        marker["limit_saved_at"] = datetime.now().isoformat()
+        write_marker(path, marker)
+        hold(
+            f"⚠️ Лимит подписки на исходе: окно {pressure[0]} израсходовано на "
+            f"{pressure[1]}%. Стройку продолжать нельзя — следующий ход может не "
+            "уехать вовсе.\n"
+            "Сделай ровно это, ничего сверх, и остановись:\n"
+            "1. Верни в tasks.md статусы взятых, но не доделанных задач "
+            "(in_progress → todo), чтобы следующая сессия их подобрала.\n"
+            "2. Допиши в progress.md, где стройка остановилась и что дальше.\n"
+            "3. Закоммить сделанное.\n"
+            "4. Скажи владельцу одной строкой: где стройка и когда сбросится "
+            "окно лимита.\n"
+            "5. Сними стройку с непрерывного режима: python3 "
+            f"{Path(__file__).resolve()} --stop {root}"
+        )
+    if marker.get("limit_saved_at"):
+        # Окно сбросилось — отметку забываем, иначе следующая встреча с лимитом
+        # пройдёт молча и обрыв случится без сохранения.
+        marker["limit_saved_at"] = None
         write_marker(path, marker)
 
     # Живой фоновый агент разбудит сессию сам — держать её незачем и вредно.

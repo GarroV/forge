@@ -27,7 +27,15 @@ python3 - "$FORGE_HOME" "$SETTINGS" <<'HOOKREG'
 import json, pathlib, shutil, sys
 
 forge_home, settings_path = sys.argv[1], pathlib.Path(sys.argv[2])
-command = f"python3 {forge_home}/hooks/keep-building.py"
+# Команда обязана переживать исчезновение файла сторожа. Её код возврата уходит
+# харнессу как решение, а `python3` на несуществующем файле отдаёт 2 — для Stop
+# это «ход владельцу не отдавать», то есть сессия, которая не может закончить ход
+# и печатает ошибку запуска вместо работы. Хватает переезда или переименования
+# репозитория Forge, чтобы это случилось на всех сессиях машины сразу. Проверка
+# существования снимает ровно этот случай и не трогает нормальный: код живого
+# сторожа проходит наружу как есть, вместе с его удержаниями.
+command = (f"[ -f {forge_home}/hooks/keep-building.py ] || exit 0; "
+           f"python3 {forge_home}/hooks/keep-building.py")
 
 settings = {}
 if settings_path.exists():

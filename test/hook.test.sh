@@ -238,4 +238,50 @@ PY
 call_hook "$old"
 expect_release "маркер стройки просрочен" "просрочен"
 
+# 14. Лимит подписки на исходе. Стройка идёт часами, а окно кончается молча: ход
+# просто перестаёт уезжать, и оборванная волна оставляет задачи в in_progress без
+# единой записи о том, где всё встало. Сторож обязан один раз удержать ход ради
+# сохранения состояния — и не держать после этого, иначе остаток лимита уйдёт на
+# сами удержания.
+set_usage() {
+  python3 - "$HOME" "$1" <<'USAGE'
+import json, os, sys, time
+home, pct = sys.argv[1], sys.argv[2]
+data = {} if pct == "none" else {"cachedUsageUtilization": {
+    "fetchedAtMs": int(time.time() * 1000),
+    "utilization": {"five_hour": {"utilization": int(pct), "resets_at": None}}}}
+json.dump(data, open(os.path.join(home, ".claude.json"), "w"))
+USAGE
+}
+
+lim="$(make_project limit '| T001 | api | — | todo | Работа |')"
+python3 "$HOOK" --start "$lim" > /dev/null
+
+set_usage 50
+call_hook "$lim"
+expect_hold "лимит далеко — сторож держит стройку как обычно"
+
+set_usage 96
+call_hook "$lim"
+expect_hold "лимит на исходе — ход удержан ради сохранения"
+grep -q "израсходовано" <<<"$HOOK_STDERR" || { echo "FAIL: удержание по лимиту не названо причиной; stderr: $HOOK_STDERR"; exit 1; }
+grep -q "in_progress → todo" <<<"$HOOK_STDERR" || { echo "FAIL: не сказано, что делать с недоделанными задачами"; exit 1; }
+
+call_hook "$lim"
+expect_release "повторный ход при исчерпанном лимите" "лимит"
+
+# Окно сбросилось — сторож обязан снова работать в полную силу: иначе одна
+# встреча с лимитом навсегда выключила бы сохранение для этой стройки.
+set_usage 10
+call_hook "$lim"
+expect_hold "окно сбросилось — сторож снова держит стройку"
+
+set_usage 96
+call_hook "$lim"
+expect_hold "лимит вернулся — сохранение предлагается снова"
+
+set_usage none
+call_hook "$lim"
+expect_hold "нет данных о лимите — сторож ведёт себя как обычно"
+
 echo "PASS"
