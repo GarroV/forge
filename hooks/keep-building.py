@@ -83,14 +83,12 @@ LIMIT_PCT = int(os.environ.get("CLAUDE_USAGE_SAVE_THRESHOLD", "95"))
 LIMIT_WINDOW_UNITS = ("hour", "day", "week", "month")
 
 
-def usage_pressure():
-    """Худшее окно лимита подписки, если оно за порогом, иначе None.
+def usage_worst():
+    """Самое выбранное окно лимита подписки как (имя, процент), иначе None.
 
-    Claude Code держит снимок утилизации окон в `~/.claude.json` и обновляет его
-    сам, но модели этот снимок в контекст не приходит: изнутри стройки лимит
-    невидим ровно до момента, когда ход просто перестаёт уезжать. Нет снимка,
-    битый файл, незнакомый формат — считаем, что давления нет: сторож,
-    останавливающий стройку по догадке, вреднее отсутствующего.
+    Сырое значение нужно не только сторожу: ширина волны блок-агентов тоже
+    считается от остатка, но по другим порогам. Один читатель снимка на всех —
+    чтобы два механизма не расходились в том, сколько осталось.
     """
     try:
         with open(Path(os.path.expanduser("~")) / ".claude.json", encoding="utf-8") as fh:
@@ -110,6 +108,19 @@ def usage_pressure():
             continue
         if worst is None or pct > worst[1]:
             worst = (name, int(pct))
+    return worst
+
+
+def usage_pressure():
+    """Худшее окно лимита подписки, если оно за порогом остановки, иначе None.
+
+    Claude Code держит снимок утилизации окон в `~/.claude.json` и обновляет его
+    сам, но модели этот снимок в контекст не приходит: изнутри стройки лимит
+    невидим ровно до момента, когда ход просто перестаёт уезжать. Нет снимка,
+    битый файл, незнакомый формат — считаем, что давления нет: сторож,
+    останавливающий стройку по догадке, вреднее отсутствующего.
+    """
+    worst = usage_worst()
     return worst if worst and worst[1] >= LIMIT_PCT else None
 
 
@@ -425,30 +436,40 @@ def cli(args) -> int:
                 f.unlink()
                 removed += 1
         settings = Path(os.path.expanduser("~")) / ".claude" / "settings.json"
-        unregistered = False
+        # Выключаются оба механизма стройки: сторож непрерывности на `Stop` и
+        # страж состава коммита на `PreToolUse`. Снятый наполовину механизм хуже
+        # любого из двух целых состояний — владелец считает, что выключил
+        # стройку, а её правила продолжают вмешиваться в его собственную работу.
+        targets = [("Stop", "keep-building.py"),
+                   ("PreToolUse", "guard-commit-scope.py"),
+                   ("PreToolUse", "guard-wave-width.py")]
+        unregistered = []
         try:
             data = json.loads(settings.read_text(encoding="utf-8"))
-            stop = data.get("hooks", {}).get("Stop", [])
-            kept = []
-            for group in stop:
-                hooks_left = [h for h in group.get("hooks", [])
-                              if "keep-building.py" not in str(h.get("command", ""))]
-                if len(hooks_left) != len(group.get("hooks", [])):
-                    unregistered = True
-                if hooks_left:
-                    group["hooks"] = hooks_left
-                    kept.append(group)
+            for event, filename in targets:
+                if event not in data.get("hooks", {}):
+                    continue
+                kept = []
+                for group in data["hooks"][event]:
+                    hooks_left = [h for h in group.get("hooks", [])
+                                  if filename not in str(h.get("command", ""))]
+                    if len(hooks_left) != len(group.get("hooks", [])):
+                        unregistered.append(filename)
+                    if hooks_left:
+                        group["hooks"] = hooks_left
+                        kept.append(group)
+                if kept:
+                    data["hooks"][event] = kept
+                else:
+                    data["hooks"].pop(event)
             if unregistered:
-                data["hooks"]["Stop"] = kept
-                if not kept:
-                    data["hooks"].pop("Stop")
                 settings.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
         except Exception as exc:
             print(f"маркеры удалены ({removed}), но settings.json не поправлен: {exc}")
             return 1
-        print(f"сторож выключен: маркеров удалено {removed}, "
-              f"регистрация {'снята' if unregistered else 'и не была найдена'}")
-        print("в уже открытых сессиях он перестанет вызываться только после перезапуска Claude Code")
+        names = ", ".join(sorted(set(unregistered))) if unregistered else "ни одной"
+        print(f"механизмы стройки выключены: маркеров удалено {removed}, снято регистраций — {names}")
+        print("в уже открытых сессиях они перестанут вызываться только после перезапуска Claude Code")
         return 0
 
     if mode == "--check":
@@ -472,8 +493,40 @@ def cli(args) -> int:
             print(f"сторож зарегистрирован {len(mine)} раза — это лишние удержания на каждом ходу, "
                   "почини settings.json")
             return 1
-        print(f"сторож зарегистрирован: {mine[0]}\n"
-              "в сессиях, открытых до регистрации, он не работает — нужен перезапуск Claude Code")
+        print(f"сторож зарегистрирован: {mine[0]}")
+        # Страж состава коммита проверяется здесь же: он тоже стоит установщиком
+        # и тоже молча отсутствует, если стройку разворачивали до его появления.
+        # Разница в том, что его отсутствие не видно по поведению — коммиты
+        # продолжают проходить, просто уносят чужое.
+        def registered(filename):
+            return [h.get("command", "")
+                    for group in data.get("hooks", {}).get("PreToolUse", [])
+                    for h in group.get("hooks", [])
+                    if filename in str(h.get("command", ""))]
+
+        for filename, title, cost in (
+            ("guard-commit-scope.py", "страж состава коммита",
+             "сплошной `git add` не будет остановлен"),
+            ("guard-wave-width.py", "ограничитель ширины волны",
+             "волна не сузится по остатку лимита и оборвётся вся разом"),
+        ):
+            found = registered(filename)
+            if not found:
+                print(f"{title} НЕ зарегистрирован — {cost}; запусти install.sh системы")
+            elif len(found) > 1:
+                print(f"{title} зарегистрирован {len(found)} раза — почини settings.json")
+            else:
+                print(f"{title} зарегистрирован")
+        # Остаток лимита — часть предполётной картины: от него зависит ширина
+        # волны, и он же объясняет постфактум, почему она оборвалась. Диспетчер
+        # обязан записать эту строку в журнал вместе с составом волны, иначе
+        # причина обрыва исчезнет вместе с сессией.
+        worst = usage_worst()
+        if worst:
+            print(f"лимит подписки: окно {worst[0]} израсходовано на {worst[1]}%")
+        else:
+            print("лимит подписки: данных нет (~/.claude.json без снимка утилизации)")
+        print("в сессиях, открытых до регистрации, они не работают — нужен перезапуск Claude Code")
         return 0
 
     if mode == "--status":

@@ -27,15 +27,20 @@ python3 - "$FORGE_HOME" "$SETTINGS" <<'HOOKREG'
 import json, pathlib, shutil, sys
 
 forge_home, settings_path = sys.argv[1], pathlib.Path(sys.argv[2])
-# Команда обязана переживать исчезновение файла сторожа. Её код возврата уходит
-# харнессу как решение, а `python3` на несуществующем файле отдаёт 2 — для Stop
-# это «ход владельцу не отдавать», то есть сессия, которая не может закончить ход
-# и печатает ошибку запуска вместо работы. Хватает переезда или переименования
-# репозитория Forge, чтобы это случилось на всех сессиях машины сразу. Проверка
-# существования снимает ровно этот случай и не трогает нормальный: код живого
-# сторожа проходит наружу как есть, вместе с его удержаниями.
-command = (f"[ -f {forge_home}/hooks/keep-building.py ] || exit 0; "
-           f"python3 {forge_home}/hooks/keep-building.py")
+
+# Механизмы стройки, которые обязаны стоять в харнессе, а не в чьей-то памяти.
+# Сторож непрерывности не даёт ходу закончиться посреди стройки; страж состава
+# коммита не даёт сплошному `git add` унести в коммит чужую работу из общего
+# дерева. Оба нарушались, пока были правилами в тексте.
+# (событие, файл, таймаут, подпись, матчер инструментов)
+HOOKS = [
+    ("Stop", "keep-building.py", 20,
+     "Проверяю, осталась ли работа по стройке", None),
+    ("PreToolUse", "guard-commit-scope.py", 10,
+     "Смотрю, что уедет в коммит", "Bash"),
+    ("PreToolUse", "guard-wave-width.py", 10,
+     "Считаю, сколько блоков потянет остаток лимита", "Agent|Task"),
+]
 
 settings = {}
 if settings_path.exists():
@@ -44,32 +49,45 @@ if settings_path.exists():
     except Exception:
         # Испорченный settings.json чинит владелец, а не установщик: перезаписать
         # его своей версией значит молча снести все его настройки.
-        print("hook: settings.json не читается как JSON — сторож НЕ зарегистрирован, почини файл и повтори")
+        print("hook: settings.json не читается как JSON — хуки НЕ зарегистрированы, почини файл и повтори")
         raise SystemExit(0)
 
 hooks = settings.setdefault("hooks", {})
-stop = hooks.setdefault("Stop", [])
 
-# Свои записи узнаём по имени файла сторожа, а не по полной команде: путь меняется
-# при переезде репозитория, и сравнение по нему плодило бы дубли сторожей.
-ours = [g for g in stop
-        if any("keep-building.py" in str(h.get("command", "")) for h in g.get("hooks", []))]
-if ours:
-    for group in ours:
-        for h in group["hooks"]:
-            if "keep-building.py" in str(h.get("command", "")):
-                h["command"] = command
-    action = "обновлён"
-else:
-    stop.append({"hooks": [{"type": "command", "command": command, "timeout": 20,
-                            "statusMessage": "Проверяю, осталась ли работа по стройке"}]})
-    action = "зарегистрирован"
+for event, filename, timeout, status, matcher in HOOKS:
+    path = f"{forge_home}/hooks/{filename}"
+    # Команда обязана переживать исчезновение файла хука. Её код возврата уходит
+    # харнессу как решение, и `python3` на несуществующем файле отдаёт 2: на Stop
+    # это «ход владельцу не отдавать», на PreToolUse — «запретить вызов», то есть
+    # запрет всех инструментов разом, чинить который изнутри сессии уже нечем.
+    # Хватает переезда репозитория, чтобы это накрыло все сессии машины.
+    command = f"[ -f {path} ] || exit 0; python3 {path}"
+
+    groups = hooks.setdefault(event, [])
+    # Свои записи узнаём по имени файла, а не по полной команде: путь меняется при
+    # переезде репозитория, и сравнение по нему плодило бы дубли.
+    ours = [g for g in groups
+            if any(filename in str(h.get("command", "")) for h in g.get("hooks", []))]
+    if ours:
+        for group in ours:
+            for h in group["hooks"]:
+                if filename in str(h.get("command", "")):
+                    h["command"] = command
+        action = "обновлён"
+    else:
+        entry = {"type": "command", "command": command, "timeout": timeout,
+                 "statusMessage": status}
+        group = {"hooks": [entry]}
+        if matcher:
+            group["matcher"] = matcher
+        groups.append(group)
+        action = "зарегистрирован"
+    print(f"hook: {filename} {action} ({event})")
 
 settings_path.parent.mkdir(parents=True, exist_ok=True)
 if settings_path.exists():
     shutil.copy(settings_path, str(settings_path) + ".forge-backup")
 settings_path.write_text(json.dumps(settings, ensure_ascii=False, indent=2), encoding="utf-8")
-print(f"hook: сторож непрерывности {action}")
 HOOKREG
 
 if [[ ! -f "$PROFILE_DIR/profile.md" ]]; then

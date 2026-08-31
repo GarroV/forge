@@ -59,6 +59,37 @@ if forge_home not in ours[0]:
 if "[ -f" not in ours[0] or "exit 0" not in ours[0]:
     print(f"FAIL: команда сторожа не переживёт пропажу файла: {ours[0]}")
     raise SystemExit(1)
+
+# Страж состава коммита ставится тем же установщиком. Его отсутствие не видно по
+# поведению — коммиты продолжают проходить, просто уносят в себя чужую работу из
+# общего дерева, — поэтому регистрацию проверяем тестом, а не глазами.
+pre = settings.get("hooks", {}).get("PreToolUse", [])
+scope_groups = [g for g in pre
+                if any("guard-commit-scope.py" in str(h.get("command", ""))
+                       for h in g.get("hooks", []))]
+if len(scope_groups) != 1:
+    print(f"FAIL: страж состава коммита зарегистрирован {len(scope_groups)} раз вместо одного")
+    raise SystemExit(1)
+if scope_groups[0].get("matcher") != "Bash":
+    print(f"FAIL: страж навешен не на Bash, а на {scope_groups[0].get('matcher')!r} — "
+          "он разбирает команды git и на других инструментах бесполезен")
+    raise SystemExit(1)
+scope_cmd = [h["command"] for h in scope_groups[0]["hooks"]
+             if "guard-commit-scope.py" in h["command"]][0]
+if "[ -f" not in scope_cmd or "exit 0" not in scope_cmd:
+    print(f"FAIL: команда стража не переживёт пропажу файла: {scope_cmd}")
+    raise SystemExit(1)
+
+wave_groups = [g for g in pre
+               if any("guard-wave-width.py" in str(h.get("command", ""))
+                      for h in g.get("hooks", []))]
+if len(wave_groups) != 1:
+    print(f"FAIL: ограничитель ширины волны зарегистрирован {len(wave_groups)} раз вместо одного")
+    raise SystemExit(1)
+if "Agent" not in str(wave_groups[0].get("matcher")):
+    print(f"FAIL: ограничитель навешен на {wave_groups[0].get('matcher')!r} — он должен ловить "
+          "запуск агентов, иначе ширину волны считать не на чем")
+    raise SystemExit(1)
 CHECK
 
 # Та же гарантия, проверенная исполнением, а не чтением: структурная проверка
@@ -131,3 +162,21 @@ hook_out="$("$FORGE_HOME/install.sh")"
 grep -q "перезапуска" <<<"$hook_out" || { echo "FAIL: не сказано, что сторож включится после перезапуска"; exit 1; }
 
 echo "PASS"
+
+# --off обязан снимать оба механизма стройки. Снятый наполовину хуже любого
+# целого состояния: владелец считает, что выключил стройку, а её правила
+# продолжают вмешиваться в его собственную работу.
+python3 "$FORGE_HOME/hooks/keep-building.py" --off > /dev/null
+python3 - "$SETTINGS" <<'OFFCHECK' || exit 1
+import json, sys
+s = json.loads(open(sys.argv[1]).read())
+left = [h.get("command", "")
+        for ev in ("Stop", "PreToolUse")
+        for g in s.get("hooks", {}).get(ev, [])
+        for h in g.get("hooks", [])
+        if any(n in str(h.get("command", ""))
+               for n in ("keep-building.py", "guard-commit-scope.py", "guard-wave-width.py"))]
+if left:
+    print(f"FAIL: --off оставил регистрации: {left}")
+    raise SystemExit(1)
+OFFCHECK

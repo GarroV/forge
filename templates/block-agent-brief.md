@@ -151,6 +151,15 @@ directories by an **absolute path** from the root of your own copy. Unsure which
 copy your gate is actually checking — break the file it checks and confirm the gate
 turns red.
 
+**Files shared by the whole product are not yours to rewrite.** A translation
+catalogue (`.po`, `messages.json` and the like), a global registry, a single
+generated index — one file that every block touches. Rewriting it wholesale looks
+harmless in your copy and silently drops what other blocks added in parallel: one
+run lost fifteen Serbian strings that way, recovered from history afterwards. Put
+your block's entries in your own file (a json under your block, a fragment, a
+migration) and say in your handover that the shared catalogue needs assembling —
+the dispatcher assembles it after the merge.
+
 **Before every `commit`, compare what is staged** against your task's file list:
 `git diff --cached --name-only`. An extra path means "find out where it came from",
 not "commit it"; the same comparison catches a mistyped path.
