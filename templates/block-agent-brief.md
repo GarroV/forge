@@ -84,6 +84,33 @@ the main copy.
   tell the dispatcher, do not set up your own: the dependency file and the runner
   config are shared, and a parallel block would create them at the same time as you.
 
+## Context discipline
+
+**Your context is the single largest cost of the build.** Measured on
+`dodo_qr_service`: block agents read 644 million tokens from cache out of 838
+million spent on opus across the whole build — more than the dispatcher and every
+other role together. The reason is not the number of agents but the shape of the
+cost: everything you read stays until you finish, and is re-read on **every**
+following turn. A 20-thousand-token file pulled in on turn 50 of 400 is not 20
+thousand tokens, it is seven million.
+
+So, while you work:
+
+- **Read narrowly.** `sed -n '40,80p'`, a targeted `grep`, `head` — not `cat` on a
+  whole file to find one function. Read the whole file when you are about to change
+  it, not to look something up.
+- **Long output goes to a file, not into you.** A full test run, a build log, a
+  dependency tree: redirect it, then grep the file for what you need. The line you
+  are looking for is worth reading; the four hundred lines around it are not.
+- **Do not re-read what you already read.** If you no longer remember it, say so
+  and read the narrow part again — not the file again.
+- **Images never.** They go to `forge-visual-checker` (see the browser check).
+- **Do not read other blocks "to get the picture".** What you need from them is in
+  your brief and in the contracts; the rest is someone else's cost centre.
+
+None of this is a reason to verify less. Verification that costs a turn is cheap;
+the expensive thing is carrying a file you read once, for three hundred turns.
+
 ## What you do yourself and what you hand to an executor
 
 Do the small things yourself: launching a subagent and reading its report cost more
@@ -208,13 +235,22 @@ silent for ten minutes.
 
 A page must be checked in a **live browser**, not only by reading the markup.
 
-**Compare it against the screen reference** — `docs/forge/design/`, the matching
-module: open both and compare, do not recall. The reference says what is on the
-screen; the spec says how it behaves. They disagree — that is not your call:
-describe the discrepancy in the report and the dispatcher will put it to the owner.
-Quietly doing it your own way is the most expensive option: on a live project a
-review found 63 such discrepancies, and they were fixed after the product had
-already been built.
+**The comparison against the reference is not yours to do.** It is done by a
+`forge-visual-checker` subagent (`subagent_type: "forge-visual-checker"`; the role
+carries its own model, you do not pass one). Give it: the matching module in
+`docs/forge/design/`, the page URL or the paths of the shots you took, and what to
+check — states included. It comes back with the discrepancies as text.
+
+Why it is not yours: an image weighs 30-180 thousand tokens, stays in your context
+until you finish, and is re-read from cache on every turn you take afterwards. On
+the `dodo_qr_service` build 40 such reads cost 132 million tokens — 20% of
+everything the block agents spent. Reading a screenshot yourself is refused by a
+hook; the refusal is not permission to skip the check. The reference says what is
+on the screen, the spec says how it behaves — when the checker reports that the two
+disagree, that is not your call either: it goes into your report and the dispatcher
+puts it to the owner. Quietly doing it your own way is the most expensive option:
+on a live project a review found 63 such discrepancies, and they were fixed after
+the product had already been built.
 
 If the browser tool is busy with another profile ("browser is already running") —
 that is routine, not a reason to skip the check: bring up **your own** headless
@@ -222,9 +258,10 @@ browser and drive it over the debugging protocol through Node's built-in
 `WebSocket` (no external dependencies needed for that). Make clicks and input as
 real events, not by calling handlers directly.
 
-**Take a screenshot and attach it to the report** (`png`, one to three frames: the
-main state and what changed). The browser is already open, the shot costs one
-command, and from it the dispatcher shows the owner what came out. The class of
+**Take a screenshot into a file and put its path in the report** (`png`, one to
+three frames: the main state and what changed) — the path, never the picture. The
+browser is already open, the shot costs one command, and from it the dispatcher
+shows the owner what came out. The class of
 defects that is caught only by looking is 13% of the measurement: a confusing
 order, two rows of identical buttons, a hint that went missing. Neither a test nor
 a spec review sees them.

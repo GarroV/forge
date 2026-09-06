@@ -56,6 +56,20 @@ MAX_IDLE_HOLDS = 3
 # Часовой предел ловит быстрый цикл: что-то заклинило прямо сейчас.
 MAX_HOLDS_PER_HOUR = 12
 
+# Доля порога автокомпакта, на которой стройка обязана записать состояние. Компакт
+# — не потеря: у Forge всё состояние в файлах, и диспетчер восстанавливает картину
+# шагом 1. Опасно другое — компакт, пришедший в середине приёмки, когда результат
+# прогона уже получен, а в tasks.md ещё ничего не записано: после него результата
+# нет ни в контексте, ни в файле, и блок принимают заново. Поэтому за десятую долю
+# до порога ход удерживается один раз — ровно ради записи.
+COMPACT_PREP_SHARE = 0.9
+
+# Ниже этой доли порога считается, что компакт уже прошёл и готовиться можно
+# снова. Порог отпускания намеренно ниже порога срабатывания: контекст после
+# компакта падает в разы, и любое значение между ними означало бы, что сторож
+# готовится к одному и тому же компакту дважды.
+COMPACT_DONE_SHARE = 0.6
+
 # Общий предел на одну стройку ловит медленный: стройка, которая движется по
 # графу, но не доходит до конца, могла бы удерживать ход сутками, обнуляя часовой
 # счётчик каждый час. После этого предела сторож замолкает до следующей команды
@@ -122,6 +136,71 @@ def usage_pressure():
     """
     worst = usage_worst()
     return worst if worst and worst[1] >= LIMIT_PCT else None
+
+
+def autocompact_window() -> int:
+    """Порог автокомпакта в токенах, как его видит харнесс, или 0, если он не задан.
+
+    Читается там же, где его задаёт владелец: переменная окружения
+    `CLAUDE_CODE_AUTO_COMPACT_WINDOW` перебивает ключ `autoCompactWindow` в
+    `~/.claude/settings.json`. Ноль означает «неизвестно» — и тогда сторож про
+    компакт молчит. Выдумывать здесь дефолт нельзя: он зависит от модели сессии
+    (у моделей с окном в миллион токенов он около 967 тысяч), и ошибка в большую
+    сторону сделала бы подготовку бесполезной, а в меньшую — навязчивой.
+    """
+    raw = os.environ.get("CLAUDE_CODE_AUTO_COMPACT_WINDOW")
+    if raw:
+        try:
+            return max(0, int(raw))
+        except Exception:
+            return 0
+    try:
+        settings = json.loads((Path.home() / ".claude" / "settings.json").read_text(encoding="utf-8"))
+        return max(0, int(settings.get("autoCompactWindow") or 0))
+    except Exception:
+        return 0
+
+
+def context_size(payload: dict) -> int:
+    """Текущий размер контекста сессии в токенах, или 0, если определить не вышло.
+
+    Другого способа узнать его у хука нет: ни поля в payload, ни команды CLI не
+    существует. Зато в транскрипте у каждого ответа модели лежит `usage`, и сумма
+    входных полей последнего ответа — это ровно то, что уехало в API на последнем
+    ходу. Файл читается с хвоста: на длинной стройке он весит мегабайты, а нужны
+    последние строки.
+    """
+    transcript = payload.get("transcript_path")
+    if not transcript:
+        return 0
+    try:
+        path = Path(transcript)
+        size = path.stat().st_size
+        with path.open("rb") as fh:
+            if size > 262_144:
+                fh.seek(size - 262_144)
+                fh.readline()  # первая строка после сдвига почти наверняка обрезана
+            tail = fh.read().decode("utf-8", errors="ignore")
+    except Exception:
+        return 0
+    for line in reversed(tail.splitlines()):
+        if '"usage"' not in line:
+            continue
+        try:
+            record = json.loads(line)
+        except Exception:
+            continue
+        if record.get("type") != "assistant":
+            continue
+        usage = (record.get("message") or {}).get("usage") or {}
+        total = (
+            int(usage.get("input_tokens") or 0)
+            + int(usage.get("cache_read_input_tokens") or 0)
+            + int(usage.get("cache_creation_input_tokens") or 0)
+        )
+        if total:
+            return total
+    return 0
 
 
 def builds_dir() -> Path:
@@ -316,6 +395,36 @@ def decide(payload: dict) -> None:
         # пройдёт молча и обрыв случится без сохранения.
         marker["limit_saved_at"] = None
         write_marker(path, marker)
+
+    # Контекст подошёл к порогу автокомпакта. Сам компакт для стройки безопасен:
+    # состояние лежит в файлах, и шаг 1 восстанавливает картину целиком. Опасно
+    # окно между «результат получен» и «результат записан» — компакт, пришедший в
+    # него, уносит единственную копию: прогон был, а в tasks.md его нет, и блок
+    # принимается заново. Поэтому удержание ровно одно и ровно ради записи, как на
+    # исходе лимита. Порог известен только если владелец его задал; не задан —
+    # сторож молчит и ничего не выдумывает.
+    window = autocompact_window()
+    ctx = context_size(payload)
+    if window and ctx:
+        if marker.get("compact_prep_ctx") and ctx < window * COMPACT_DONE_SHARE:
+            marker["compact_prep_ctx"] = None
+            write_marker(path, marker)
+        elif not marker.get("compact_prep_ctx") and ctx >= window * COMPACT_PREP_SHARE:
+            marker["compact_prep_ctx"] = ctx
+            write_marker(path, marker)
+            hold(
+                f"🧭 Контекст сессии {ctx // 1000} тыс. токенов при пороге компакта "
+                f"{window // 1000} тыс. Компакт сработает сам и там, где застанет.\n"
+                "Он не потеря: состояние стройки лежит в файлах. Потеря — то, что "
+                "уже получено, но ещё не записано. Запиши это сейчас, одним заходом, "
+                "и продолжай работу:\n"
+                "1. tasks.md — статусы всех задач, по которым есть результат.\n"
+                "2. progress.md — чем закончилось то, что делаешь прямо сейчас.\n"
+                "3. decisions.md и questions.md — решения и вопросы последних ходов.\n"
+                "4. Закоммить записанное.\n"
+                "После компакта картину не вспоминай — восстанови шагом 1: файлы "
+                "остаются источником правды, память после компакта им не является."
+            )
 
     # Живой фоновый агент разбудит сессию сам — держать её незачем и вредно.
     if has_live_background(payload):
