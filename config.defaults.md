@@ -36,7 +36,7 @@ question_batching: true
 |---|---|---|---|
 | Блок-агент | ведёт блок стройки целиком | `agents/forge-block-agent.md` | `opus` |
 | Исполнитель | механическая задача по готовому контракту | `agents/forge-executor.md` | `sonnet` |
-| Поисковик | одно направление исследования | `agents/forge-researcher.md` | `sonnet` |
+| Поисковик | одно направление исследования | `agents/exploratio.md` | `sonnet` |
 | Смотрящий | сверка построенного экрана с эталоном | `agents/forge-visual-checker.md` | `sonnet` |
 
 Модель здесь применяется **сама**, потому что лежит в определении: скилл называет

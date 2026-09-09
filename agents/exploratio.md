@@ -1,6 +1,6 @@
 ---
-name: forge-researcher
-description: Research agent for the Forge discovery phase. Covers one direction (existing solutions / market and references / stack and versions), collects findings with links, and writes them to its own file. Launched by the forge-new command.
+name: exploratio
+description: Research agent for the Forge discovery phase. Covers one direction (existing solutions / market and references / stack and versions), collects findings with links, and writes them to its own file. Launched by the ordo command.
 model: sonnet
 ---
 

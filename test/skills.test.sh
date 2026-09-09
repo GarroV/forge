@@ -55,7 +55,7 @@ done
 # Без него тон и состав задачи задаёт каждый агент заново: в беклоге появлялись
 # цитаты из переписки владельца, имена рабочей инфраструктуры и описания
 # персональных данных — а трекер читают посторонние.
-for creator in forge-build forge-new; do
+for creator in forge-build ordo; do
   skill="$SKILLS_DIR/$creator/SKILL.md"
   [[ -f "$skill" ]] || continue
   grep -qF 'templates/issue-style.md' "$skill" || \
@@ -112,15 +112,15 @@ if [[ -f "$build_skill" ]]; then
   done
 fi
 
-# Машинный отчёт прогона — стык трёх команд: forge-new объявляет его формат вместе
+# Машинный отчёт прогона — стык трёх команд: ordo объявляет его формат вместе
 # с конфигами гейтов, forge-quality-gates называет его частью роли «тесты», приёмка
 # в forge-build его читает. Выпадение любого звена возвращает гейт к коду возврата,
 # который не отличает двести выполненных проверок от нуля зарегистрированных.
-for pair in "forge-new|отчёта прогона и путь к нему" "forge-quality-gates|формат машинного отчёта прогона" \
-            "forge-new|caffeinate" "forge-status|граф отстал от того, что" "forge-status|Показывай, но не помечай" \
-            "forge-new|экранный эталон" "forge-new|Эталон пришёл позже" \
-            "forge-new|scripts/check" "forge-new|core.hooksPath" \
-            "forge-deploy|Смоук обязан остаться повторяемым" "forge-deploy|запиши способ отката" "forge-new|более позднего этапа" "forge-new|package.test.sh"; do
+for pair in "ordo|отчёта прогона и путь к нему" "forge-quality-gates|формат машинного отчёта прогона" \
+            "ordo|caffeinate" "forge-status|граф отстал от того, что" "forge-status|Показывай, но не помечай" \
+            "ordo|экранный эталон" "ordo|Эталон пришёл позже" \
+            "ordo|scripts/check" "ordo|core.hooksPath" \
+            "forge-deploy|Смоук обязан остаться повторяемым" "forge-deploy|запиши способ отката" "ordo|более позднего этапа" "ordo|package.test.sh"; do
   IFS='|' read -r skill_name marker <<< "$pair"
   target="$SKILLS_DIR/$skill_name/SKILL.md"
   [[ -f "$target" ]] || continue

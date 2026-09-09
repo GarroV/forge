@@ -60,20 +60,33 @@ done
 
 # Детектор дрифта в обе стороны: скилл называет агента по имени, и если имя
 # разъехалось с определением, запуск упадёт «agent type not found» уже в бою.
-# Имена самих скиллов исключаются по фактическому составу каталога, а не списком
-# в тексте теста: список пришлось бы дописывать при каждом новом скилле, и первый
-# же добавленный скилл ронял бы этот тест как «агент без определения».
-skill_names="$(for dir in "$FORGE_HOME"/skills/*/; do basename "${dir%/}"; done | paste -sd'|' -)"
+# Якорь — сам вызов (`subagent_type: <имя>`), а не форма имени: карта переименования
+# (docs/naming.md) снимает префикс forge- с агентов по одному, и регулярка,
+# завязанная на этот префикс, молча переставала бы видеть переименованных —
+# ровно так же, как install.sh до задачи 0 переставал их находить.
+python3 - "$FORGE_HOME" "${defined[*]}" <<'PYEOF' || exit 1
+import pathlib
+import re
+import sys
 
-while IFS= read -r referenced; do
-  [[ -z "$referenced" ]] && continue
-  [[ " ${defined[*]} " == *" $referenced "* ]] || fail "скиллы ссылаются на агента $referenced, а определения нет"
-done < <(grep -rohE '\bforge-(block-agent|executor|researcher|[a-z-]+)\b' "$FORGE_HOME/skills" "$FORGE_HOME/templates" \
-         | grep -vE "^(${skill_names})$" | sort -u)
+forge_home = pathlib.Path(sys.argv[1])
+defined = set(sys.argv[2].split())
 
-for name in "${defined[@]}"; do
-  grep -rqE "\b$name\b" "$FORGE_HOME/skills" "$FORGE_HOME/templates" \
-    || fail "агент $name определён, но ни один скилл его не запускает — мёртвая роль"
-done
+pattern = re.compile(r'subagent_type:\s*"?([A-Za-z][A-Za-z0-9_-]*)"?')
+referenced = set()
+for base in ("skills", "templates"):
+    for path in (forge_home / base).rglob("*"):
+        if path.is_file():
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            referenced.update(pattern.findall(text))
+
+for name in sorted(referenced - defined):
+    print(f"FAIL: скиллы ссылаются на агента {name}, а определения нет")
+    sys.exit(1)
+
+for name in sorted(defined - referenced):
+    print(f"FAIL: агент {name} определён, но ни один скилл его не запускает — мёртвая роль")
+    sys.exit(1)
+PYEOF
 
 echo "PASS"
