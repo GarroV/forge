@@ -1,4 +1,4 @@
-<!-- telegram-protocol.md — what the system writes to the owner, and when, while it builds on its own. Read by forge-build; the templates are filled in by substituting {{...}}. The channel is transport only: the truth about questions always lives in questions.md, never in the conversation. -->
+<!-- telegram-protocol.md — what the system writes to the owner, and when, while it builds on its own. Read by fabrica; the templates are filled in by substituting {{...}}. The channel is transport only: the truth about questions always lives in questions.md, never in the conversation. -->
 
 # Protocol of messages to the owner
 
@@ -106,7 +106,7 @@ Hence three requirements:
   "On demand" means the skill itself must create the demand: the channel wakes
   nobody and never reminds anyone of itself. That is why fetching is tied to the
   places where work stops anyway — accepting a block and returning to the state
-  files (`forge-build`, step 4). Without that tie the inbox is never fetched: no
+  files (`fabrica`, step 4). Without that tie the inbox is never fetched: no
   occasion arises. Verified on the run of 13.08.2026 — an answer from the owner lay
   in the channel for five days with a healthy channel and a running build.
 - **If the channel does not answer — say so immediately, not silently.** The

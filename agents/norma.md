@@ -1,5 +1,5 @@
 ---
-name: forge-visual-checker
+name: norma
 description: Visual checker of an autonomous Forge build. Compares a built screen against its design reference and returns the discrepancies as text. The only role allowed to read screenshots — everyone else gets them denied, because an image stays in the context of whoever read it and is re-read on every later turn.
 model: sonnet
 ---

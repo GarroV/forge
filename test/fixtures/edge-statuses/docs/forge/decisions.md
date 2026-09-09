@@ -1,4 +1,4 @@
-<!-- managed by forge: формат строк ниже не менять — файл парсят forge-build и cursus -->
+<!-- managed by forge: формат строк ниже не менять — файл парсят fabrica и cursus -->
 # Решения
 
 | id | date | decision | why | who |

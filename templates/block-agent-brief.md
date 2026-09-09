@@ -104,7 +104,7 @@ So, while you work:
   are looking for is worth reading; the four hundred lines around it are not.
 - **Do not re-read what you already read.** If you no longer remember it, say so
   and read the narrow part again — not the file again.
-- **Images never.** They go to `forge-visual-checker` (see the browser check).
+- **Images never.** They go to `norma` (see the browser check).
 - **Do not read other blocks "to get the picture".** What you need from them is in
   your brief and in the contracts; the rest is someone else's cost centre.
 
@@ -114,8 +114,8 @@ the expensive thing is carrying a file you read once, for three hundred turns.
 ## What you do yourself and what you hand to an executor
 
 Do the small things yourself: launching a subagent and reading its report cost more
-than two edits. But you **must** hand a task to a `forge-executor` subagent
-(`subagent_type: forge-executor`; the role carries its own model, you do not pass
+than two edits. But you **must** hand a task to an `optio` subagent
+(`subagent_type: optio`; the role carries its own model, you do not pass
 one) when **all four** conditions hold:
 
 1. its contract is already fully described in the block file — what comes in, what
@@ -236,7 +236,7 @@ silent for ten minutes.
 A page must be checked in a **live browser**, not only by reading the markup.
 
 **The comparison against the reference is not yours to do.** It is done by a
-`forge-visual-checker` subagent (`subagent_type: "forge-visual-checker"`; the role
+`norma` subagent (`subagent_type: "norma"`; the role
 carries its own model, you do not pass one). Give it: the matching module in
 `docs/forge/design/`, the page URL or the paths of the shots you took, and what to
 check — states included. It comes back with the discrepancies as text.

@@ -40,7 +40,7 @@ call_guard() {
 import json,sys
 print(json.dumps({'session_id':'s1','cwd':sys.argv[1],'hook_event_name':'PreToolUse',
                   'tool_name':sys.argv[2],
-                  'tool_input':{'subagent_type':'forge-block-agent','prompt':'бриф'}}))" "$dir" "$tool")"
+                  'tool_input':{'subagent_type':'artifex','prompt':'бриф'}}))" "$dir" "$tool")"
   GUARD_OUT="$(printf '%s' "$payload" | python3 "$GUARD" 2>/dev/null)"
   GUARD_CODE=$?
 }

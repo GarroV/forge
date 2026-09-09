@@ -137,7 +137,7 @@ FORGE_TEST_PYTHON=/tmp/forge-channel-venv/bin/python bash test/channel-db.test.s
 Команды вызываются словами, в обычном разговоре с Claude Code: отдельного CLI у
 системы нет.
 
-Внутри они называются `ordo`, `forge-build`, `missio`, `cursus` —
+Внутри они называются `ordo`, `fabrica`, `missio`, `cursus` —
 не версии системы, а разные фазы работы с проектом. Печатать эти имена не
 нужно, они нужны модели при подборе команды и читателю репозитория.
 

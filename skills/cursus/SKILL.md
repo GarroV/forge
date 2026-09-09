@@ -343,4 +343,4 @@ gh issue list --state open --limit 200 --json number | python3 -c 'import json,s
 
 Не добавляй разделов сверх этого списка и не предлагай сам взяться за
 следующий шаг — это read-only отчёт, решение и действие остаются за владельцем
-или за `/forge-build`.
+или за `/fabrica`.

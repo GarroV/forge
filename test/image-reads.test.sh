@@ -4,7 +4,7 @@ set -uo pipefail
 # Тесты стража изображений. Скриншот, прочитанный дорогой ролью, — самый дорогой
 # объект в контексте: замер одной реальной стройки дал 40 снимков, удержание
 # которых стоило 20% всего расхода блок-агентов (132 млн токенов чтения кэша на
-# opus). Страж переносит сверку в роль forge-visual-checker на sonnet.
+# opus). Страж переносит сверку в роль norma на sonnet.
 #
 # Страж запрещает чтение, а ложный запрет ломает работу владельца в его
 # собственной сессии. Поэтому проверяется прежде всего молчание: вне стройки, на
@@ -86,13 +86,13 @@ echo "страж изображений: на стройке"
 call_guard "$build" "$shot"
 expect_deny "крупный снимок в контекст диспетчера не идёт"
 
-call_guard "$build" "$shot" "$(make_role forge-block-agent)"
+call_guard "$build" "$shot" "$(make_role artifex)"
 expect_deny "блок-агент на opus — та самая роль, ради которой правило написано"
 
-call_guard "$build" "$shot" "$(make_role forge-executor)"
+call_guard "$build" "$shot" "$(make_role optio)"
 expect_deny "исполнителю картинка тоже не нужна: у него механическая задача"
 
-call_guard "$build" "$shot" "$(make_role forge-visual-checker)"
+call_guard "$build" "$shot" "$(make_role norma)"
 expect_silent "роль сверки смотрит картинки — она для этого и заведена"
 
 call_guard "$build" "$tiny"
@@ -121,7 +121,7 @@ expect_silent "Read без пути"
 echo "страж изображений: отказ называет замену"
 
 call_guard "$build" "$shot"
-expect_text "в отказе названа роль, которая сделает сверку" "forge-visual-checker"
+expect_text "в отказе названа роль, которая сделает сверку" "norma"
 expect_text "отказ требует сделать сверку, а не отменить её" "не пропускай"
 expect_text "отказ называет цену словами владельца" "20%"
 
