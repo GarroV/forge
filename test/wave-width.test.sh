@@ -65,7 +65,7 @@ expect_silent() { [[ -z "$GUARD_OUT" ]] && ok "$1" || bad "$1"; }
 
 make_project() {
   local dir="$WORK/$1"
-  mkdir -p "$dir/docs/forge"
+  mkdir -p "$dir/docs/furca"
   printf '| id | блок | зависит от | статус | задача |\n|---|---|---|---|---|\n| T001 | api | — | todo | Работа |\n' > "$dir/tasks.md"
   echo '# Журнал' > "$dir/progress.md"
   git -C "$dir" init -q 2>/dev/null

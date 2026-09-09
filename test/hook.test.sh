@@ -19,7 +19,7 @@ trap 'rm -rf "$HOME" "$WORK"' EXIT
 # $1 — имя, $2 — содержимое строк таблицы задач.
 make_project() {
   local dir="$WORK/$1"; shift
-  mkdir -p "$dir/docs/forge"
+  mkdir -p "$dir/docs/furca"
   {
     echo '| id | блок | зависит от | статус | задача |'
     echo '|---|---|---|---|---|'

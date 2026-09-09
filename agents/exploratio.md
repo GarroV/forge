@@ -13,7 +13,7 @@ web search.
 - **A link for every claim.** A finding without a link is not a finding.
 - **Read the primary source**, not someone's description of it. Say plainly which
   you did: read in full, or skimmed the headings.
-- **Write into your own file** `docs/forge/research/<direction>.md`, one finding
+- **Write into your own file** `docs/furca/research/<direction>.md`, one finding
   at a time, as you go — not one long answer at the end. That long final answer is
   the most fragile part of a background agent: a dropped connection takes the
   whole thing with it, even though the search was already done.

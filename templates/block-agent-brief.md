@@ -32,20 +32,20 @@ the main copy.
 
 ## Read before you start (actually, not from memory)
 
-1. `docs/forge/blocks/{{block name}}.md` — **your contract**, the thing you will be
+1. `docs/furca/blocks/{{block name}}.md` — **your contract**, the thing you will be
    accepted against: an inventory of what the block provides, and its Definition of
    Done.
-2. `docs/forge/constitution.md` — the project's principles. They outrank your
+2. `docs/furca/constitution.md` — the project's principles. They outrank your
    preferences.
-3. `docs/forge/spec.md` — what the product is and what counts as ready.
-4. `docs/forge/plan.md` — the stack and the contracts between blocks. The stack is
+3. `docs/furca/spec.md` — what the product is and what counts as ready.
+4. `docs/furca/plan.md` — the stack and the contracts between blocks. The stack is
    already chosen.
-5. `docs/forge/decisions.md` — what has been decided and why. {{decisions that matter most for this block}}
+5. `docs/furca/decisions.md` — what has been decided and why. {{decisions that matter most for this block}}
 6. `tasks.md` — your tasks: {{list of ids}}.
 
 ## Who owns what
 
-- You edit: **your block's code** and **`docs/forge/blocks/{{block name}}.md`**.
+- You edit: **your block's code** and **`docs/furca/blocks/{{block name}}.md`**.
 - Keep a short work log and the "Status" field in the block file **as you go**, not
   at the end: if your session dies, that is the only trace left.
 - **You update `CHANGELOG.md`** — an entry about what appeared: **by meaning, with
@@ -78,7 +78,7 @@ the main copy.
   separate branches this is invisible; it surfaces only after the merge and looks
   like "that block broke the project".
 - **The project's gates run before you hand the block over, not after.** The
-  commands are in `docs/forge/plan.md`, section "Quality gates". A check that is red
+  commands are in `docs/furca/plan.md`, section "Quality gates". A check that is red
   for you will be red at acceptance too — except there it costs a whole round trip.
 - **The dispatcher prepares the test-run environment.** Nothing to run tests with —
   tell the dispatcher, do not set up your own: the dependency file and the runner
@@ -238,7 +238,7 @@ A page must be checked in a **live browser**, not only by reading the markup.
 **The comparison against the reference is not yours to do.** It is done by a
 `norma` subagent (`subagent_type: "norma"`; the role
 carries its own model, you do not pass one). Give it: the matching module in
-`docs/forge/design/`, the page URL or the paths of the shots you took, and what to
+`docs/furca/design/`, the page URL or the paths of the shots you took, and what to
 check — states included. It comes back with the discrepancies as text.
 
 Why it is not yours: an image weighs 30-180 thousand tokens, stays in your context

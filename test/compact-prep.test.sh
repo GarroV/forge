@@ -69,7 +69,7 @@ print(json.dumps(p))" "$dir" "$transcript")"
 
 make_project() {
   local dir="$WORK/$1"
-  mkdir -p "$dir/docs/forge"
+  mkdir -p "$dir/docs/furca"
   printf '| id | блок | зависит от | статус | задача |\n|---|---|---|---|---|\n| T001 | api | — | done | Работа |\n' > "$dir/tasks.md"
   echo '# Журнал' > "$dir/progress.md"
   git -C "$dir" init -q 2>/dev/null

@@ -14,8 +14,8 @@ id_in_list() {
 check_fixture() {
   local FIXTURE="$1"
   local TASKS="$FIXTURE/tasks.md"
-  local QUESTIONS="$FIXTURE/docs/forge/questions.md"
-  local DECISIONS="$FIXTURE/docs/forge/decisions.md"
+  local QUESTIONS="$FIXTURE/docs/furca/questions.md"
+  local DECISIONS="$FIXTURE/docs/furca/decisions.md"
   local PROGRESS="$FIXTURE/progress.md"
 
   for f in "$TASKS" "$QUESTIONS" "$DECISIONS" "$PROGRESS"; do
@@ -136,18 +136,18 @@ check_fixture() {
 
   # Проверка 6: файл состояния, лежащий не по своему каноническому пути.
   # Канон один: `tasks.md` и `progress.md` — в корне проекта, `questions.md` и
-  # `decisions.md` — в `docs/forge/`. Двойник по зеркальному пути не ломает
+  # `decisions.md` — в `docs/furca/`. Двойник по зеркальному пути не ломает
   # ничего сразу и потому опаснее поломки: сессия читает файл по имени, получает
   # не тот, и восстанавливает по нему картину — а перечитывать код ради проверки
   # ей запрещено скиллом стройки. Проверено на живом прогоне (`dodo_pnl_service`,
-  # 21.08.2026): рядом с корневым `progress.md` завёлся `docs/forge/progress.md`,
+  # 21.08.2026): рядом с корневым `progress.md` завёлся `docs/furca/progress.md`,
   # журнал уехал в него, корневой отстал на три дня, и заметил это владелец, а не
   # система.
   local canonical wrong
-  for pair in "tasks.md:docs/forge/tasks.md" \
-              "progress.md:docs/forge/progress.md" \
-              "docs/forge/questions.md:questions.md" \
-              "docs/forge/decisions.md:decisions.md"; do
+  for pair in "tasks.md:docs/furca/tasks.md" \
+              "progress.md:docs/furca/progress.md" \
+              "docs/furca/questions.md:questions.md" \
+              "docs/furca/decisions.md:decisions.md"; do
     canonical="${pair%%:*}"
     wrong="${pair##*:}"
     if [[ -e "$FIXTURE/$wrong" ]]; then
@@ -190,15 +190,15 @@ check_fixture() {
   done
 
   # Проверки 8 и 9: состав блоков в графе и в пакете документов обязан совпадать.
-  # Источник истины о том, какие блоки есть, — файлы описаний `docs/forge/blocks/*.md`.
+  # Источник истины о том, какие блоки есть, — файлы описаний `docs/furca/blocks/*.md`.
   # Оба расхождения тихие и оба измерены на живом прогоне: блок, объявленный без
   # единой задачи, делает заявленную цель недостижимой (диспетчеру нечего раздать,
   # а граф выглядит целым), а блок, который строится без описания в пакете,
   # диспетчер не увидит вовсе — он раздаёт работу по плану. На одном прогоне план
   # знал девять блоков, а журналы велись по двадцати трём.
-  local BLOCKS_DIR="$FIXTURE/docs/forge/blocks"
+  local BLOCKS_DIR="$FIXTURE/docs/furca/blocks"
   if [[ ! -d "$BLOCKS_DIR" ]]; then
-    echo "NOTE: [$FIXTURE] нет docs/forge/blocks/ — состав блоков не проверяется"
+    echo "NOTE: [$FIXTURE] нет docs/furca/blocks/ — состав блоков не проверяется"
   else
     local declared graph_blocks blk
     declared="$(for f in "$BLOCKS_DIR"/*.md; do [[ -e "$f" ]] || continue; basename "$f" .md; done | sort -u)"
@@ -208,7 +208,7 @@ check_fixture() {
     while IFS= read -r blk; do
       [[ -z "$blk" ]] && continue
       grep -qxF "$blk" <<< "$graph_blocks" || {
-        echo "FAIL: [$FIXTURE] блок $blk объявлен в docs/forge/blocks/, но в графе нет ни одной его задачи"
+        echo "FAIL: [$FIXTURE] блок $blk объявлен в docs/furca/blocks/, но в графе нет ни одной его задачи"
         echo "      Цель, ради которой он заведён, недостижима: диспетчеру нечего раздать."
         exit 1
       }
@@ -217,7 +217,7 @@ check_fixture() {
     while IFS= read -r blk; do
       [[ -z "$blk" ]] && continue
       grep -qxF "$blk" <<< "$declared" || {
-        echo "FAIL: [$FIXTURE] блок $blk есть в графе задач, но не объявлен в docs/forge/blocks/"
+        echo "FAIL: [$FIXTURE] блок $blk есть в графе задач, но не объявлен в docs/furca/blocks/"
         echo "      Диспетчер раздаёт работу по пакету документов — этот блок он не увидит."
         exit 1
       }

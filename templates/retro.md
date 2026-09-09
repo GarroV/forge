@@ -1,4 +1,4 @@
-<!-- retro.md — the review of one run: what got in the way of THE SYSTEM building. Filled in at the end of the build, right after the MVP-ready message; placed in docs/forge/retro.md of the project repository. Every item becomes an issue in the backlog of the system's own repository (the one it was installed from) — a retro that produced no issues did not happen. -->
+<!-- retro.md — the review of one run: what got in the way of THE SYSTEM building. Filled in at the end of the build, right after the MVP-ready message; placed in docs/furca/retro.md of the project repository. Every item becomes an issue in the backlog of the system's own repository (the one it was installed from) — a retro that produced no issues did not happen. -->
 
 # Run retro
 

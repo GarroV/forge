@@ -20,7 +20,7 @@ FORGE_HOME="$(cd "$(dirname "$0")/.." && pwd)"
 if [[ $# -eq 0 ]]; then
   found=0
   for dir in "$FORGE_HOME"/test/fixtures/*/; do
-    [[ -f "${dir}docs/forge/spec.md" ]] || continue
+    [[ -f "${dir}docs/furca/spec.md" ]] || continue
     found=1
     bash "$0" "${dir%/}"
   done
@@ -33,7 +33,7 @@ PROJECT="$1"
 [[ -d "$PROJECT" ]] || { echo "FAIL: каталог проекта не найден: $PROJECT"; exit 1; }
 PROJECT="$(cd "$PROJECT" && pwd)"
 
-FORGE_DIR="$PROJECT/docs/forge"
+FORGE_DIR="$PROJECT/docs/furca"
 SPEC="$FORGE_DIR/spec.md"
 PLAN="$FORGE_DIR/plan.md"
 BLOCKS_DIR="$FORGE_DIR/blocks"
@@ -46,10 +46,10 @@ trim() { sed 's/^[[:space:]]*//; s/[[:space:]]*$//'; }
 for f in "$SPEC" "$PLAN" "$TASKS"; do
   [[ -f "$f" ]] || fail "нет документа пакета: ${f#$PROJECT/}"
 done
-[[ -d "$BLOCKS_DIR" ]] || fail "нет каталога описаний блоков: docs/forge/blocks/"
+[[ -d "$BLOCKS_DIR" ]] || fail "нет каталога описаний блоков: docs/furca/blocks/"
 
 declared_blocks="$(for f in "$BLOCKS_DIR"/*.md; do [[ -e "$f" ]] || continue; basename "$f" .md; done | sort -u)"
-[[ -n "$declared_blocks" ]] || fail "в docs/forge/blocks/ нет ни одного описания блока"
+[[ -n "$declared_blocks" ]] || fail "в docs/furca/blocks/ нет ни одного описания блока"
 
 # 2. История must называет существующий блок. Связь спеки с планом должна быть
 # машинной: иначе история остаётся без блока, и это замечает не проверка, а
@@ -62,7 +62,7 @@ while IFS= read -r row; do
   blk="$(awk -F'|' '{print $4}' <<< "$row" | trim)"
   [[ -n "$blk" && "$blk" != "—" ]] || fail "история must не называет блок: «${story}…»"
   grep -qxF "$blk" <<< "$declared_blocks" \
-    || fail "история must ссылается на блок «${blk}», которого нет в docs/forge/blocks/: «${story}…»"
+    || fail "история must ссылается на блок «${blk}», которого нет в docs/furca/blocks/: «${story}…»"
 done < <(grep -E '^\|' "$SPEC" | grep -vE '^\| *(история|story|-{3,}) *\|' || true)
 
 # 3. Блок описан, но план о нём не знает — диспетчер раздаёт работу по плану и

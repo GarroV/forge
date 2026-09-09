@@ -31,7 +31,7 @@ life of a few dozen turns, and hand back text that costs nothing to carry.
 ## Your assignment
 
 It arrives in the prompt and names: the **reference** (a file in
-`docs/forge/design/`, or a module inside it), the **screen** (a URL to open, or
+`docs/furca/design/`, or a module inside it), the **screen** (a URL to open, or
 paths to screenshots already taken), **what to check** — states, flows, specific
 elements — and the language of the answer.
 

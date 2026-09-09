@@ -14,9 +14,9 @@
 
 ## Blocks and dependency graph
 
-<!-- Every block is a logical unit of the product with its own spec (docs/forge/blocks/<name>.md), its own contract and its own working tree. The graph below says which block waits for another's contract to be ready (a real dependency, not merely "related").
+<!-- Every block is a logical unit of the product with its own spec (docs/furca/blocks/<name>.md), its own contract and its own working tree. The graph below says which block waits for another's contract to be ready (a real dependency, not merely "related").
 
-A product with an interface must have a `visual` block: the shared visual system (grid, typography, colours, components, states) built from the screen reference in docs/forge/design/. It comes before the blocks that draw screens — otherwise every block invents its own button, and reconciling them afterwards costs more than agreeing up front. It is declared here, not added later: on a live project the block appeared only after the owner said he could not even test the product. -->
+A product with an interface must have a `visual` block: the shared visual system (grid, typography, colours, components, states) built from the screen reference in docs/furca/design/. It comes before the blocks that draw screens — otherwise every block invents its own button, and reconciling them afterwards costs more than agreeing up front. It is declared here, not added later: on a live project the block appeared only after the owner said he could not even test the product. -->
 
 ```mermaid
 graph TD
