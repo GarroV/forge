@@ -1,37 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
 shopt -s nullglob
-FORGE_HOME="$(cd "$(dirname "$0")" && pwd)"
+FURCA_HOME="$(cd "$(dirname "$0")" && pwd)"
 SKILLS_DIR="${HOME}/.claude/skills"
 AGENTS_DIR="${HOME}/.claude/agents"
-PROFILE_DIR="${HOME}/.claude/forge"
+PROFILE_DIR="${HOME}/.claude/furca"
 SETTINGS="${HOME}/.claude/settings.json"
 mkdir -p "$SKILLS_DIR" "$AGENTS_DIR" "$PROFILE_DIR"
 # Протухшие симлинки снимаем до установки новых: карта переименования
 # (docs/naming.md) снимает префикс forge- со скиллов и агентов по одному, и без
 # этой уборки после каждого шага в реестре остаются рядом старое (битое) имя и
 # новое — модель видит оба и путается, каким пользоваться. Трогаем только свои
-# симлинки: цель должна лежать под $FORGE_HOME, иначе это чужой набор
+# симлинки: цель должна лежать под $FURCA_HOME, иначе это чужой набор
 # (ecc, vercel, superpowers и т. п.) в этом же плоском реестре, и решать за него
 # не наше дело.
 for link in "$SKILLS_DIR"/* "$AGENTS_DIR"/*; do
   [[ -L "$link" ]] || continue
   target="$(readlink "$link")"
-  [[ "$target" == "$FORGE_HOME"/* ]] || continue
+  [[ "$target" == "$FURCA_HOME"/* ]] || continue
   [[ -e "$target" ]] && continue
   rm -f "$link"
   echo "$(basename "$link") -> удалён протухший симлинк"
 done
 # Дискавери — по всем прямым подкаталогам skills/ и всем *.md в agents/, а не по
 # префиксу forge-: набор имён FURCA (docs/naming.md) префикса не разделяет.
-for skill in "$FORGE_HOME"/skills/*/; do
+for skill in "$FURCA_HOME"/skills/*/; do
   name="$(basename "$skill")"
   ln -sfn "${skill%/}" "$SKILLS_DIR/$name"
   echo "skill: $name -> linked"
 done
 # Роли агентов ставятся определениями, а не памяткой в скилле: модель зашита
 # во frontmatter, поэтому диспетчер не может забыть её передать.
-for agent in "$FORGE_HOME"/agents/*.md; do
+for agent in "$FURCA_HOME"/agents/*.md; do
   name="$(basename "$agent")"
   ln -sfn "$agent" "$AGENTS_DIR/$name"
   echo "agent: ${name%.md} -> linked"
@@ -40,10 +40,10 @@ done
 # диспетчер отдаёт ход владельцу в стыке между волнами, и стройка стоит до
 # следующего сообщения. Регистрация идемпотентна и не трогает чужие хуки —
 # settings.json принадлежит владельцу, а не системе.
-python3 - "$FORGE_HOME" "$SETTINGS" <<'HOOKREG'
+python3 - "$FURCA_HOME" "$SETTINGS" <<'HOOKREG'
 import json, pathlib, shutil, sys
 
-forge_home, settings_path = sys.argv[1], pathlib.Path(sys.argv[2])
+furca_home, settings_path = sys.argv[1], pathlib.Path(sys.argv[2])
 
 # Механизмы стройки, которые обязаны стоять в харнессе, а не в чьей-то памяти.
 # Сторож непрерывности не даёт ходу закончиться посреди стройки; страж состава
@@ -77,7 +77,7 @@ if settings_path.exists():
 hooks = settings.setdefault("hooks", {})
 
 for event, filename, timeout, status, matcher in HOOKS:
-    path = f"{forge_home}/hooks/{filename}"
+    path = f"{furca_home}/hooks/{filename}"
     # Команда обязана переживать исчезновение файла хука. Её код возврата уходит
     # харнессу как решение, и `python3` на несуществующем файле отдаёт 2: на Stop
     # это «ход владельцу не отдавать», на PreToolUse — «запретить вызов», то есть
@@ -108,16 +108,25 @@ for event, filename, timeout, status, matcher in HOOKS:
 
 settings_path.parent.mkdir(parents=True, exist_ok=True)
 if settings_path.exists():
-    shutil.copy(settings_path, str(settings_path) + ".forge-backup")
+    shutil.copy(settings_path, str(settings_path) + ".furca-backup")
 settings_path.write_text(json.dumps(settings, ensure_ascii=False, indent=2), encoding="utf-8")
 HOOKREG
 
-if [[ ! -f "$PROFILE_DIR/profile.md" ]]; then
-  template="$(cat "$FORGE_HOME/profile.example.md")"
-  printf '%s\n' "${template//__FORGE_HOME__/$FORGE_HOME}" > "$PROFILE_DIR/profile.md"
-  echo "profile: created"
-else
+# Профиль мог остаться на прежнем месте (~/.claude/forge/profile.md) с личными
+# настройками владельца — установка обязана перенести именно его, а не
+# создать пустой профиль с нуля. Остальное в ~/.claude/forge/ (канал, личные
+# находки, свои скрипты) эта задача не трогает: секрет канала переезжает
+# отдельно, более осторожным шагом, синхронно с живым хостом.
+OLD_PROFILE="${HOME}/.claude/forge/profile.md"
+if [[ -f "$PROFILE_DIR/profile.md" ]]; then
   echo "profile: exists, skipped"
+elif [[ -f "$OLD_PROFILE" ]]; then
+  mv "$OLD_PROFILE" "$PROFILE_DIR/profile.md"
+  echo "profile: перенесён из ~/.claude/forge/profile.md"
+else
+  template="$(cat "$FURCA_HOME/profile.example.md")"
+  printf '%s\n' "${template//__FURCA_HOME__/$FURCA_HOME}" > "$PROFILE_DIR/profile.md"
+  echo "profile: created"
 fi
 # Реестр агентов в уже открытой сессии обновляется, но с задержкой: сразу после
 # появления файла запуск падает «agent type not found», через некоторое время тот же

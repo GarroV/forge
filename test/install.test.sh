@@ -5,11 +5,33 @@ FORGE_HOME="$(cd "$(dirname "$0")/.." && pwd)"
 export HOME="$(mktemp -d)"
 trap 'rm -rf "$HOME"' EXIT
 "$FORGE_HOME/install.sh" > /dev/null
-[[ -f "$HOME/.claude/forge/profile.md" ]] || { echo "FAIL: no profile"; exit 1; }
-grep -q "forge_home: $FORGE_HOME" "$HOME/.claude/forge/profile.md" || { echo "FAIL: forge_home not substituted"; exit 1; }
-echo "custom-marker" >> "$HOME/.claude/forge/profile.md"
+[[ -f "$HOME/.claude/furca/profile.md" ]] || { echo "FAIL: no profile"; exit 1; }
+grep -q "forge_home: $FORGE_HOME" "$HOME/.claude/furca/profile.md" || { echo "FAIL: forge_home not substituted"; exit 1; }
+echo "custom-marker" >> "$HOME/.claude/furca/profile.md"
 "$FORGE_HOME/install.sh" > /dev/null
-grep -q "custom-marker" "$HOME/.claude/forge/profile.md" || { echo "FAIL: profile overwritten"; exit 1; }
+grep -q "custom-marker" "$HOME/.claude/furca/profile.md" || { echo "FAIL: profile overwritten"; exit 1; }
+
+# Перенос старого профиля: на диске мог уже лежать ~/.claude/forge/profile.md с
+# личными настройками владельца (язык, площадка, канал) — установка обязана
+# перенести именно его, а не создать пустой профиль с нуля. Остальное в
+# ~/.claude/forge/ (канал, личные находки) эта задача не трогает — секрет
+# канала переезжает отдельным, более осторожным шагом.
+MIGRATE_HOME="$(mktemp -d)"
+trap 'rm -rf "$HOME" "$MIGRATE_HOME"' EXIT
+mkdir -p "$MIGRATE_HOME/.claude/forge"
+printf '%s\n' "---" "forge_home: /old/path" "language: ru" "---" "old-owner-marker" \
+  > "$MIGRATE_HOME/.claude/forge/profile.md"
+echo "не трогать" > "$MIGRATE_HOME/.claude/forge/channel.env"
+HOME="$MIGRATE_HOME" "$FORGE_HOME/install.sh" > /dev/null
+grep -q "old-owner-marker" "$MIGRATE_HOME/.claude/furca/profile.md" 2>/dev/null || {
+  echo "FAIL: старый профиль не перенёсся в ~/.claude/furca/"; exit 1;
+}
+[[ -f "$MIGRATE_HOME/.claude/forge/profile.md" ]] && {
+  echo "FAIL: старый профиль остался на месте — перенос скопировал, а не переместил"; exit 1;
+}
+[[ -f "$MIGRATE_HOME/.claude/forge/channel.env" ]] || {
+  echo "FAIL: channel.env пропал — его перенос не в этой задаче"; exit 1;
+}
 [[ ! -L "$HOME/.claude/skills/forge-*" ]] || { echo "FAIL: literal glob symlink created"; exit 1; }
 for s in "$FORGE_HOME"/skills/*/; do
   name="$(basename "$s")"
