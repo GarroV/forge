@@ -86,10 +86,10 @@ the main copy.
 
 ## Context discipline
 
-**Your context is the single largest cost of the build.** Measured on
-`dodo_qr_service`: block agents read 644 million tokens from cache out of 838
-million spent on opus across the whole build — more than the dispatcher and every
-other role together. The reason is not the number of agents but the shape of the
+**Your context is the single largest cost of the build.** Measured on one real
+build: block agents read 644 million tokens from cache out of 838 million spent
+on opus across the whole build — more than the dispatcher and every other role
+together. The reason is not the number of agents but the shape of the
 cost: everything you read stays until you finish, and is re-read on **every**
 following turn. A 20-thousand-token file pulled in on turn 50 of 400 is not 20
 thousand tokens, it is seven million.
@@ -243,7 +243,7 @@ check — states included. It comes back with the discrepancies as text.
 
 Why it is not yours: an image weighs 30-180 thousand tokens, stays in your context
 until you finish, and is re-read from cache on every turn you take afterwards. On
-the `dodo_qr_service` build 40 such reads cost 132 million tokens — 20% of
+one real build 40 such reads cost 132 million tokens — 20% of
 everything the block agents spent. Reading a screenshot yourself is refused by a
 hook; the refusal is not permission to skip the check. The reference says what is
 on the screen, the spec says how it behaves — when the checker reports that the two

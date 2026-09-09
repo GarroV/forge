@@ -20,7 +20,7 @@ product. Neither tests nor a spec review see them: on a live measurement they we
 
 But an image is the most expensive thing that can enter a context. One screenshot
 weighs 30-180 thousand tokens and **stays until the agent finishes**, re-read from
-cache on every following turn. Measured on the `dodo_qr_service` build: 40 images
+cache on every following turn. Measured on one real build: 40 images
 cost 132 million tokens of cache reads — 20% of everything the block agents spent,
 all of it on opus. The single worst shot cost 23 million tokens, because it was
 read on turn 254 of 382 and carried through the remaining 128.
