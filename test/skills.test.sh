@@ -117,7 +117,7 @@ fi
 # в forge-build его читает. Выпадение любого звена возвращает гейт к коду возврата,
 # который не отличает двести выполненных проверок от нуля зарегистрированных.
 for pair in "ordo|отчёта прогона и путь к нему" "forge-quality-gates|формат машинного отчёта прогона" \
-            "ordo|caffeinate" "forge-status|граф отстал от того, что" "forge-status|Показывай, но не помечай" \
+            "ordo|caffeinate" "cursus|граф отстал от того, что" "cursus|Показывай, но не помечай" \
             "ordo|экранный эталон" "ordo|Эталон пришёл позже" \
             "ordo|scripts/check" "ordo|core.hooksPath" \
             "forge-deploy|Смоук обязан остаться повторяемым" "forge-deploy|запиши способ отката" "ordo|более позднего этапа" "ordo|package.test.sh"; do

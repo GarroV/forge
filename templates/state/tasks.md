@@ -1,4 +1,4 @@
-<!-- managed by forge: do not change the row format below — forge-build and forge-status parse this file -->
+<!-- managed by forge: do not change the row format below — forge-build and cursus parse this file -->
 # Tasks
 
 <!-- id: Tnnn (T001, T002, ...). status: todo | in_progress | done | failed | blocked:Qnnn (Qnnn — the id of an open question in questions.md). "depends on" — ids separated by commas, or "—". block: the name of a product block from plan.md, or chores for housekeeping tasks that belong to no block (topping up research, obtaining access, applying an owner's answer) — those are never handed to block agents. issue: the task's number in the project tracker (#N), or "—" if it has none. The issue column is what makes reconciling the graph against the tracker mechanical: without it the link lives in commit text, and the graph falls behind the tracker silently — on a live project that is how the build stood still for a month and a half.

@@ -1,4 +1,4 @@
-<!-- managed by forge: append-only, формат строки ниже не менять — файл парсят forge-build и forge-status -->
+<!-- managed by forge: append-only, формат строки ниже не менять — файл парсят forge-build и cursus -->
 # Журнал стройки
 
 2026-07-29 08:59 [dispatcher] Формат журнала: с этой строки каждый запуск агента записывается с ролью и моделью

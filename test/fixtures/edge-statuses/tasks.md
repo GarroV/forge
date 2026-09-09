@@ -1,4 +1,4 @@
-<!-- managed by forge: формат строк ниже не менять — файл парсят forge-build и forge-status -->
+<!-- managed by forge: формат строк ниже не менять — файл парсят forge-build и cursus -->
 # Задачи
 
 | id | block | depends on | status | task | issue | stage |
