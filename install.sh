@@ -7,14 +7,31 @@ AGENTS_DIR="${HOME}/.claude/agents"
 PROFILE_DIR="${HOME}/.claude/forge"
 SETTINGS="${HOME}/.claude/settings.json"
 mkdir -p "$SKILLS_DIR" "$AGENTS_DIR" "$PROFILE_DIR"
-for skill in "$FORGE_HOME"/skills/forge-*/; do
+# Протухшие симлинки снимаем до установки новых: карта переименования
+# (docs/naming.md) снимает префикс forge- со скиллов и агентов по одному, и без
+# этой уборки после каждого шага в реестре остаются рядом старое (битое) имя и
+# новое — модель видит оба и путается, каким пользоваться. Трогаем только свои
+# симлинки: цель должна лежать под $FORGE_HOME, иначе это чужой набор
+# (ecc, vercel, superpowers и т. п.) в этом же плоском реестре, и решать за него
+# не наше дело.
+for link in "$SKILLS_DIR"/* "$AGENTS_DIR"/*; do
+  [[ -L "$link" ]] || continue
+  target="$(readlink "$link")"
+  [[ "$target" == "$FORGE_HOME"/* ]] || continue
+  [[ -e "$target" ]] && continue
+  rm -f "$link"
+  echo "$(basename "$link") -> удалён протухший симлинк"
+done
+# Дискавери — по всем прямым подкаталогам skills/ и всем *.md в agents/, а не по
+# префиксу forge-: набор имён FURCA (docs/naming.md) префикса не разделяет.
+for skill in "$FORGE_HOME"/skills/*/; do
   name="$(basename "$skill")"
   ln -sfn "${skill%/}" "$SKILLS_DIR/$name"
   echo "skill: $name -> linked"
 done
 # Роли агентов ставятся определениями, а не памяткой в скилле: модель зашита
 # во frontmatter, поэтому диспетчер не может забыть её передать.
-for agent in "$FORGE_HOME"/agents/forge-*.md; do
+for agent in "$FORGE_HOME"/agents/*.md; do
   name="$(basename "$agent")"
   ln -sfn "$agent" "$AGENTS_DIR/$name"
   echo "agent: ${name%.md} -> linked"
@@ -33,7 +50,7 @@ forge_home, settings_path = sys.argv[1], pathlib.Path(sys.argv[2])
 # коммита не даёт сплошному `git add` унести в коммит чужую работу из общего
 # дерева; страж изображений не пускает скриншот в контекст дорогой роли, оставляя
 # сверку экрана роли forge-visual-checker. Все трое нарушались, пока были
-# правилами в тексте: замер стройки dodo_qr_service дал 40 картинок, удержание
+# правилами в тексте: замер одной реальной стройки дал 40 картинок, удержание
 # которых стоило 20% расхода блок-агентов.
 # (событие, файл, таймаут, подпись, матчер инструментов)
 HOOKS = [

@@ -25,6 +25,35 @@ for a in "$FORGE_HOME"/agents/forge-*.md; do
   agents_found=1
 done
 (( agents_found == 1 )) || { echo "FAIL: no agent definitions linked"; exit 1; }
+
+# Дискавери не должен зависеть от префикса forge-: карта переименования
+# (docs/naming.md) снимает этот префикс со всех скиллов и агентов по одному, и
+# после первого же переименования каталог перестаёт называться forge-* — глоб,
+# завязанный на префикс, молча перестаёт его находить.
+mkdir -p "$FORGE_HOME/skills/zzz-demo"
+touch "$FORGE_HOME/agents/zzz-demo-agent.md"
+trap 'rm -rf "$HOME" "$FORGE_HOME/skills/zzz-demo" "$FORGE_HOME/agents/zzz-demo-agent.md"' EXIT
+"$FORGE_HOME/install.sh" > /dev/null
+[[ "$(readlink "$HOME/.claude/skills/zzz-demo")" == "$FORGE_HOME/skills/zzz-demo" ]] || { echo "FAIL: дискавери скиллов зависит от префикса forge-"; exit 1; }
+[[ "$(readlink "$HOME/.claude/agents/zzz-demo-agent.md")" == "$FORGE_HOME/agents/zzz-demo-agent.md" ]] || { echo "FAIL: дискавери агентов зависит от префикса forge-"; exit 1; }
+rm -rf "$FORGE_HOME/skills/zzz-demo" "$FORGE_HOME/agents/zzz-demo-agent.md"
+
+# Протухший симлинк на переименованный или удалённый скилл/агент установщик
+# обязан снять сам — иначе после переименования модель видит рядом старое
+# (битое) и новое имя и путается, каким из них пользоваться.
+ln -sfn "/nonexistent-skill-path" "$HOME/.claude/skills/forge-stale"
+ln -sfn "/nonexistent-agent-path.md" "$HOME/.claude/agents/forge-stale.md"
+"$FORGE_HOME/install.sh" > /dev/null
+[[ ! -e "$HOME/.claude/skills/forge-stale" ]] || { echo "FAIL: протухший симлинк скилла не снят"; exit 1; }
+[[ ! -e "$HOME/.claude/agents/forge-stale.md" ]] || { echo "FAIL: протухший симлинк агента не снят"; exit 1; }
+
+# Чужой симлинк (не наш — цель не под $FORGE_HOME) уборка не трогает, даже если
+# он битый: ~/.claude/skills — общий плоский реестр с другими наборами (ecc,
+# vercel, superpowers), и наша уборка не вправе решать за них.
+ln -sfn "/completely/foreign/broken/target" "$HOME/.claude/skills/foreign-skill"
+"$FORGE_HOME/install.sh" > /dev/null
+[[ -L "$HOME/.claude/skills/foreign-skill" ]] || { echo "FAIL: уборка сняла чужой симлинк"; exit 1; }
+rm -f "$HOME/.claude/skills/foreign-skill"
 # Предупреждение — часть установки, а не любезность: в уже открытой сессии реестр
 # агентов обновляется с задержкой, и первый запуск после установки может упасть
 # «agent type not found». Проверяются оба совета, потому что порознь они врут:
