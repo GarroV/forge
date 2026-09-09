@@ -4,7 +4,7 @@ forge_home: __FURCA_HOME__
 language: en              # язык разговора и документов проекта: en | ru | любой другой
 test_platform: local      # или ssh-хост тестовой площадки (напр. my-server)
 telegram: "off"           # "on" после развёртывания канала (channel/README.md);
-                          # адрес и секрет — в ~/.claude/forge/channel.env, не здесь
+                          # адрес и секрет — в ~/.claude/furca/channel.env, не здесь
 # session_model_recommended: fable   # какую модель системе советовать для главной сессии
 # agent_models:           # аварийное переопределение моделей субагентов
 #   block_agent: sonnet   # (по умолчанию берутся из agents/*.md)

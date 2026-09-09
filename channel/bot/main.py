@@ -47,12 +47,12 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
-log = logging.getLogger("forge-channel")
+log = logging.getLogger("furca-channel")
 
 # Переменные, без которых канал не имеет смысла. Проверяем на старте и падаем
 # внятно: контейнер, поднявшийся без секрета и молча пускающий всех, хуже
 # упавшего контейнера.
-REQUIRED = ("BOT_TOKEN", "DATABASE_URL", "FORGE_SECRET", "OWNER_CHAT_ID")
+REQUIRED = ("BOT_TOKEN", "DATABASE_URL", "FURCA_SECRET", "OWNER_CHAT_ID")
 
 
 def read_env() -> dict:
@@ -66,7 +66,7 @@ def read_env() -> dict:
     return {
         "token": os.environ["BOT_TOKEN"].strip(),
         "dsn": os.environ["DATABASE_URL"].strip(),
-        "secret": os.environ["FORGE_SECRET"].strip(),
+        "secret": os.environ["FURCA_SECRET"].strip(),
         "owner": os.environ["OWNER_CHAT_ID"].strip(),
         "port": int(os.environ.get("API_PORT", "8090")),
     }

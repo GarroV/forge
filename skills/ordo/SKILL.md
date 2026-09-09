@@ -30,7 +30,7 @@ description: Заводит новый Forge-проект и ведёт его �
 
 ## Шаг 0 — настройки
 
-1. Прочитай `~/.claude/forge/profile.md`, возьми `forge_home`.
+1. Прочитай `~/.claude/furca/profile.md`, возьми `forge_home`.
 2. Прочитай `<forge_home>/config.defaults.md`; значения из шапки профиля
    перекрывают дефолты.
 3. Тебе нужны: `language`, `session_model_recommended`, `agent_models`, `test_platform`

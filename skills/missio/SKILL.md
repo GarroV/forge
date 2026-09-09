@@ -37,7 +37,7 @@ description: Раскатывает согласованный MVP Forge-про�
 
 ## Шаг 0 — настройки
 
-1. Прочитай `~/.claude/forge/profile.md` → `forge_home`; затем
+1. Прочитай `~/.claude/furca/profile.md` → `forge_home`; затем
    `<forge_home>/config.defaults.md`; значения профиля перекрывают дефолты.
    Нужны: `language` (на нём говоришь с владельцем и пишешь журнал),
    `test_platform` (чтобы отличать тестовую площадку от целевой и не
@@ -48,7 +48,7 @@ description: Раскатывает согласованный MVP Forge-про�
 3. `telegram: on` — **спроси канал запуском**, а не наличие настроек в сессии:
 
    ```bash
-   set -a; . ~/.claude/forge/channel.env; set +a
+   set -a; . ~/.claude/furca/channel.env; set +a
    curl -s --max-time 8 "$CHANNEL_URL/healthz"
    ```
 

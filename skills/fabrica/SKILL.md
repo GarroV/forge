@@ -56,7 +56,7 @@ description: Строит Forge-проект автономно до работ�
 
 ## Шаг 0 — настройки и предполётная проверка
 
-1. Прочитай `~/.claude/forge/profile.md` → `forge_home`; затем
+1. Прочитай `~/.claude/furca/profile.md` → `forge_home`; затем
    `<forge_home>/config.defaults.md`; значения профиля перекрывают дефолты.
    Нужны: `language`, `session_model_recommended`, `agent_models`,
    `converge_limit`, `test_platform`, `telegram`.
@@ -71,10 +71,10 @@ description: Строит Forge-проект автономно до работ�
    этом и остановись, ничего не создавая: подготовка проекта — другая команда.
 3. **Проверь канал уведомлений запуском, пока не начал.** `telegram: on` —
    спроси сам канал, а не наличие настроек: адрес и секрет лежат в
-   `~/.claude/forge/channel.env`.
+   `~/.claude/furca/channel.env`.
 
    ```bash
-   set -a; . ~/.claude/forge/channel.env; set +a
+   set -a; . ~/.claude/furca/channel.env; set +a
    curl -s --max-time 8 "$CHANNEL_URL/healthz"
    ```
 
@@ -700,9 +700,9 @@ artifex`), а не безымянным агентом общего назнач
 
    ```bash
    project="$(basename "$(git rev-parse --show-toplevel)")"
-   curl -s "$CHANNEL_URL/inbox?project=$project" -H "Authorization: Bearer $FORGE_SECRET"
+   curl -s "$CHANNEL_URL/inbox?project=$project" -H "Authorization: Bearer $FURCA_SECRET"
    curl -s -X POST "$CHANNEL_URL/ack" \
-     -H "Authorization: Bearer $FORGE_SECRET" -H 'content-type: application/json' \
+     -H "Authorization: Bearer $FURCA_SECRET" -H 'content-type: application/json' \
      -d "{\"ids\":[<id>],\"project\":\"$project\"}"
    ```
 

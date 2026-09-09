@@ -63,12 +63,12 @@ Hence three requirements:
   and `progress.md` stay complete without the conversation.
 - **Sending is an HTTP call to the channel.** The channel is a standing service on
   the owner's machine, not a tool inside a session. The address and the secret live
-  in the personal profile: `~/.claude/forge/channel.env` (`CHANNEL_URL`,
-  `FORGE_SECRET`). Sending:
+  in the personal profile: `~/.claude/furca/channel.env` (`CHANNEL_URL`,
+  `FURCA_SECRET`). Sending:
 
   ```bash
   curl -s -X POST "$CHANNEL_URL/notify" \
-    -H "Authorization: Bearer $FORGE_SECRET" -H 'content-type: application/json' \
+    -H "Authorization: Bearer $FURCA_SECRET" -H 'content-type: application/json' \
     -d '{"project":"<name>","kind":"question|block|alert|done|show","text":"<text>"}'
   ```
 
@@ -97,9 +97,9 @@ Hence three requirements:
   crash between "read it" and "applied it" eats the answer silently.
 
   ```bash
-  curl -s "$CHANNEL_URL/inbox?project=$project" -H "Authorization: Bearer $FORGE_SECRET"
+  curl -s "$CHANNEL_URL/inbox?project=$project" -H "Authorization: Bearer $FURCA_SECRET"
   curl -s -X POST "$CHANNEL_URL/ack" \
-    -H "Authorization: Bearer $FORGE_SECRET" -H 'content-type: application/json' \
+    -H "Authorization: Bearer $FURCA_SECRET" -H 'content-type: application/json' \
     -d "{\"ids\":[12],\"project\":\"$project\"}"
   ```
 
@@ -247,7 +247,7 @@ and verification are described in `channel/README.md` of the system's repository
    machine hosting it: `GET $CHANNEL_URL/healthz` must return `200`. An answer from
    inside the host proves nothing — the port may be closed precisely from outside.
 2. **Put the address and the secret into the personal profile** —
-   `~/.claude/forge/channel.env` (`CHANNEL_URL`, `FORGE_SECRET`), permissions `600`.
+   `~/.claude/furca/channel.env` (`CHANNEL_URL`, `FURCA_SECRET`), permissions `600`.
    None of this goes into the repository.
 3. **`telegram: on` in the profile** — otherwise the system deliberately sends
    nothing (see the rules above).

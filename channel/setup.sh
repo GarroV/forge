@@ -3,7 +3,7 @@
 #
 # От человека нужен один шаг — создать бота у @BotFather и принести токен.
 # Остальное мастер делает сам: генерирует секрет, САМ определяет chat id (просит
-# написать боту и читает первое обновление), пишет ~/.claude/forge/channel.env с
+# написать боту и читает первое обновление), пишет ~/.claude/furca/channel.env с
 # правами 600, поднимает контейнеры и проверяет канал сквозняком.
 #
 # По умолчанию канал ставится ЛОКАЛЬНО, на той же машине, где идёт стройка. Тогда
@@ -22,7 +22,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ENV_FILE="$HOME/.claude/forge/channel.env"
+ENV_FILE="$HOME/.claude/furca/channel.env"
 COMPOSE_ENV="$HERE/.env"
 PORT="${API_HOST_PORT:-8090}"
 CHECK_ONLY=0
@@ -124,7 +124,7 @@ done
 say "Ты опознан по слову — chat id определён."
 
 # ─── Секрет и файлы настроек ─────────────────────────────────────────────────
-FORGE_SECRET="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
+FURCA_SECRET="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
 POSTGRES_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
 
 mkdir -p "$(dirname "$ENV_FILE")"
@@ -132,13 +132,13 @@ umask 077
 cat > "$ENV_FILE" <<ENV
 # Создано channel/setup.sh. Права 600: здесь секрет доступа к каналу.
 CHANNEL_URL=http://localhost:${PORT}
-FORGE_SECRET=${FORGE_SECRET}
+FURCA_SECRET=${FURCA_SECRET}
 ENV
 chmod 600 "$ENV_FILE"
 
 cat > "$COMPOSE_ENV" <<ENV
 BOT_TOKEN=${BOT_TOKEN}
-FORGE_SECRET=${FORGE_SECRET}
+FURCA_SECRET=${FURCA_SECRET}
 OWNER_CHAT_ID=${OWNER_CHAT_ID}
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 API_HOST_PORT=${PORT}
@@ -163,7 +163,7 @@ done
 say ""
 say "Шаг 4. Проверяю сквозняком — отправляю тебе сообщение."
 delivered="$(curl_hidden "url = \"http://localhost:${PORT}/notify\"
-header = \"Authorization: Bearer ${FORGE_SECRET}\"
+header = \"Authorization: Bearer ${FURCA_SECRET}\"
 header = \"content-type: application/json\"" --max-time 15 -X POST \
   -d '{"kind":"block","project":"channel","text":"Канал подключён. Это проверочное сообщение мастера настройки."}' \
   | python3 -c 'import json,sys; print("ok" if json.load(sys.stdin).get("ok") else "")' || true)"

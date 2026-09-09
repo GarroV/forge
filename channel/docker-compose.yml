@@ -1,4 +1,4 @@
-# Канал Forge: Postgres (очередь ответов + журнал отправленного) и бот, который
+# Канал FURCA: Postgres (очередь ответов + журнал отправленного) и бот, который
 # владеет токеном единолично.
 #
 # Имя compose-проекта = имя каталога, поэтому держи канал в отдельной папке: свой
@@ -31,7 +31,7 @@ services:
     restart: unless-stopped
     environment:
       BOT_TOKEN: ${BOT_TOKEN:?задай в .env}
-      FORGE_SECRET: ${FORGE_SECRET:?задай в .env}
+      FURCA_SECRET: ${FURCA_SECRET:?задай в .env}
       OWNER_CHAT_ID: ${OWNER_CHAT_ID:?задай в .env}
       API_PORT: 8090
       DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-app}
