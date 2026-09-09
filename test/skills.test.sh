@@ -120,7 +120,7 @@ for pair in "ordo|отчёта прогона и путь к нему" "admissio
             "ordo|caffeinate" "cursus|граф отстал от того, что" "cursus|Показывай, но не помечай" \
             "ordo|экранный эталон" "ordo|Эталон пришёл позже" \
             "ordo|scripts/check" "ordo|core.hooksPath" \
-            "forge-deploy|Смоук обязан остаться повторяемым" "forge-deploy|запиши способ отката" "ordo|более позднего этапа" "ordo|package.test.sh"; do
+            "missio|Смоук обязан остаться повторяемым" "missio|запиши способ отката" "ordo|более позднего этапа" "ordo|package.test.sh"; do
   IFS='|' read -r skill_name marker <<< "$pair"
   target="$SKILLS_DIR/$skill_name/SKILL.md"
   [[ -f "$target" ]] || continue
