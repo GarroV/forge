@@ -120,6 +120,29 @@ expect_silent "не git вовсе"
 call_guard "$b" "git add -A" "Edit"
 expect_silent "другой инструмент — страж не при делах"
 
+# Строка внутри heredoc — это данные, записываемые в файл, а не исполняемая
+# команда. Страж не разбирает shell целиком, но обязан отсекать хотя бы это
+# (issue #94): запись теста/шаблона через heredoc — обычный способ работы
+# агента, и содержимое файла не должно читаться как чужая команда.
+heredoc_literal="$(cat <<'BASHEOF'
+cat > test/image-reads.test.sh <<'SHEOF'
+  git -C "$dir" add -A 2>/dev/null   # записывается в файл, а не выполняется
+SHEOF
+BASHEOF
+)"
+call_guard "$b" "$heredoc_literal"
+expect_allow "«git add -A» внутри heredoc — это текст файла, не команда"
+
+heredoc_then_real="$(cat <<'BASHEOF'
+cat > file.sh <<'SHEOF'
+  git add -A
+SHEOF
+git add -A
+BASHEOF
+)"
+call_guard "$b" "$heredoc_then_real"
+expect_deny "реальный git add -A после heredoc по-прежнему ловится"
+
 echo
 echo "страж состава коммита: сверка индекса перед коммитом"
 

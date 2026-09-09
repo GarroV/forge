@@ -28,6 +28,7 @@
 import importlib.util
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -39,6 +40,41 @@ SEPARATORS = ("&&", "||", ";", "|", "\n")
 
 # Аргументы `git add`, означающие «всё, что найдёшь», а не конкретный путь.
 ADD_SWEEPING = {"-A", "--all", "--no-ignore-removal", "-u", "--update", ".", ":/", "*"}
+
+# Начало heredoc: `<<DELIM`, `<<-DELIM`, `<<'DELIM'`, `<<"DELIM"`.
+HEREDOC_START = re.compile(r"<<(-)?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\2")
+
+
+def strip_heredocs(command: str) -> str:
+    """Убирает тело heredoc — это данные, записываемые в файл, а не команды.
+
+    Страж ищет запрещённую форму по подстроке в тексте и не различает
+    исполняемую часть от данных (issue #94): `git add -A`, встретившийся
+    внутри записываемого heredoc'ом файла (тест, шаблон, тело issue), не
+    исполняется и не должен читаться как чужая команда. Разбор наивный —
+    строка-терминатор ищется по точному совпадению, как это делает сам
+    shell, — и рассчитан закрыть частый случай (агент пишет файл через
+    heredoc), а не разобрать shell целиком.
+    """
+    lines = command.split("\n")
+    out = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        out.append(line)
+        match = HEREDOC_START.search(line)
+        if not match:
+            i += 1
+            continue
+        strip_tabs = match.group(1) == "-"
+        delimiter = match.group(3)
+        i += 1
+        while i < len(lines):
+            candidate = lines[i].lstrip("\t") if strip_tabs else lines[i]
+            i += 1
+            if candidate == delimiter:
+                break
+    return "\n".join(out)
 
 
 def load_keep_building():
@@ -164,6 +200,8 @@ def main() -> int:
     cwd = payload.get("cwd") or os.getcwd()
     if not build_is_running(cwd):
         return 0
+
+    command = strip_heredocs(command)
 
     for segment in segments(command):
         reason = sweeping_reason(segment)
