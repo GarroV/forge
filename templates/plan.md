@@ -31,7 +31,7 @@ Every contract has an executable check on BOTH sides: the consumer verifies that
 
 ## Quality gates
 
-<!-- How this project is checked by machine — one row per role. Six roles are mandatory: formatting, type-aware linting, type checking, tests with a coverage threshold, dead code, module boundaries. Tool sets per stack, and situational checks with their conditions for switching on, live in the forge-quality-gates skill. -->
+<!-- How this project is checked by machine — one row per role. Six roles are mandatory: formatting, type-aware linting, type checking, tests with a coverage threshold, dead code, module boundaries. Tool sets per stack, and situational checks with their conditions for switching on, live in the admissio skill. -->
 
 | Role | Command | Tool |
 | --- | --- | --- |
