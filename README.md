@@ -1,6 +1,6 @@
-# Forge
+# FURCA
 
-Forge — система разработки поверх Claude Code. На входе — одна фраза об идее
+FURCA — система разработки поверх Claude Code. На входе — одна фраза об идее
 продукта. Система подробно расспрашивает владельца по анкете, сама изучает, как
 похожее уже сделали другие, обсуждает только настоящие развилки, пишет спеку, план
 и разбивку на части — и после одного «ок» строит MVP сама. Пока она строит,
@@ -127,9 +127,9 @@ for t in test/*.test.sh; do bash "$t"; done
 пропустить проверку. Разовая подготовка:
 
 ```
-python3 -m venv /tmp/forge-channel-venv
-/tmp/forge-channel-venv/bin/pip install asyncpg aiohttp aiogram
-FORGE_TEST_PYTHON=/tmp/forge-channel-venv/bin/python bash test/channel-db.test.sh
+python3 -m venv /tmp/furca-channel-venv
+/tmp/furca-channel-venv/bin/pip install asyncpg aiohttp aiogram
+FORGE_TEST_PYTHON=/tmp/furca-channel-venv/bin/python bash test/channel-db.test.sh
 ```
 
 ## Как вести проект
@@ -177,9 +177,9 @@ FORGE_TEST_PYTHON=/tmp/forge-channel-venv/bin/python bash test/channel-db.test.s
 репозитории обнуляла бы эту защиту. Сломанный сторож ход не запирает: любая его
 ошибка — это отпуск (проверено запуском с намеренно сломанным хуком).
 
-Остановить одну стройку: `python3 <путь-к-forge>/hooks/keep-building.py --stop
+Остановить одну стройку: `python3 <путь-к-furca>/hooks/keep-building.py --stop
 <путь-к-проекту>`. Выключить механизм совсем, во всех проектах и вместе с
-регистрацией: `python3 <путь-к-forge>/hooks/keep-building.py --off`.
+регистрацией: `python3 <путь-к-furca>/hooks/keep-building.py --off`.
 
 Та же фраза продолжает прерванную стройку — отдельной команды «продолжить» нет.
 Пока стройка идёт, машину лучше не выключать: она работает на ней.
@@ -220,8 +220,8 @@ FORGE_TEST_PYTHON=/tmp/forge-channel-venv/bin/python bash test/channel-db.test.s
 bash channel/setup.sh
 ```
 
-Канал — бот, через который система задаёт вопросы и отчитывается, а ты отвечаешь
-реплаем. Мастер спрашивает только токен бота, остальное делает сам, включая
+Канал — бот, через который система задаёт вопросы и отчитывается; ответ на
+вопрос — обычный реплай в Telegram. Мастер спрашивает только токен бота, остальное делает сам, включая
 проверку сквозняком настоящим сообщением. **По умолчанию канал ставится локально**,
 на той же машине, где идёт стройка: тогда не нужны ни публикация порта, ни VPN.
 Спящая машина уведомлений не получает — ответы полежат в Telegram около суток и

@@ -76,9 +76,9 @@ plain="$(make_project plain '| T001 | api | — | todo | Что-то сдела�
 call_hook "$plain"
 expect_release "проект без маркера стройки" "нет маркера"
 
-# Не-Forge каталог: нет даже tasks.md — сторож не имеет права падать или держать.
+# Не-FURCA каталог: нет даже tasks.md — сторож не имеет права падать или держать.
 mkdir -p "$WORK/random"; call_hook "$WORK/random"
-expect_release "каталог, не являющийся проектом Forge" "нет маркера"
+expect_release "каталог, не являющийся проектом FURCA" "нет маркера"
 
 # 2. Маркер поставлен — доступная работа держит ход.
 build="$(make_project build '| T001 | api | — | todo | Собрать API |')"
