@@ -329,7 +329,7 @@ def release(reason: str) -> None:
     каталоге молчит», хотя молчал он из-за исключения.
     """
     if os.environ.get("FURCA_HOOK_TRACE"):
-        print(f"forge-hook: отпуск — {reason}", file=sys.stderr)
+        print(f"furca-hook: отпуск — {reason}", file=sys.stderr)
     sys.exit(0)
 
 

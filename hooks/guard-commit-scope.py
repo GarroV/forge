@@ -85,7 +85,7 @@ def load_keep_building():
     с остальными молча.
     """
     path = Path(__file__).resolve().parent / "keep-building.py"
-    spec = importlib.util.spec_from_file_location("forge_keep_building", path)
+    spec = importlib.util.spec_from_file_location("furca_keep_building", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

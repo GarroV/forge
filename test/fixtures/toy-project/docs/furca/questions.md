@@ -1,4 +1,4 @@
-<!-- managed by forge: формат строк ниже не менять — файл парсят fabrica и cursus -->
+<!-- managed by furca: формат строк ниже не менять — файл парсят fabrica и cursus -->
 # Вопросы владельцу
 
 | id | status | blocks | question | answer |

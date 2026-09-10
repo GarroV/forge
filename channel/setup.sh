@@ -83,7 +83,7 @@ say "Бот принят: @${bot_name}"
 # мастер сейчас придумает. И только присланное ПОСЛЕ этой секунды: Telegram
 # держит непрочитанные обновления около суток, и старое сообщение постороннего
 # иначе подошло бы.
-PAIR_CODE="forge-$(python3 -c 'import secrets; print(secrets.token_hex(3))')"
+PAIR_CODE="furca-$(python3 -c 'import secrets; print(secrets.token_hex(3))')"
 STARTED_AT="$(date +%s)"
 
 # Старую очередь сначала вычитываем и выбрасываем: она не участвует в сверке.

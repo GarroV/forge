@@ -1,4 +1,4 @@
-<!-- managed by forge: do not change the row format below — fabrica and cursus parse this file -->
+<!-- managed by furca: do not change the row format below — fabrica and cursus parse this file -->
 # Decisions
 
 <!-- id: Dnnn (D001, D002, ...). who: owner (the owner decided) | auto (decided autonomously by the dispatcher). -->

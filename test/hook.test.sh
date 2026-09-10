@@ -57,7 +57,7 @@ expect_release() {
   # исключение перехватывалось общим обработчиком, наружу шёл тот же код 0 — и
   # проверка «в чужом каталоге молчит» проходила по неверной причине.
   local want="$2"
-  grep -q "forge-hook: отпуск" <<<"$HOOK_STDERR" || {
+  grep -q "furca-hook: отпуск" <<<"$HOOK_STDERR" || {
     echo "FAIL: $1 — сторож отпустил ход, не назвав причину; stderr: $HOOK_STDERR"; exit 1; }
   grep -q "сбой сторожа" <<<"$HOOK_STDERR" && {
     echo "FAIL: $1 — сторож отпустил ход из-за сбоя, а не по решению; stderr: $HOOK_STDERR"; exit 1; }

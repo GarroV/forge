@@ -2,7 +2,7 @@
 # Дефолты системы FURCA. НЕ редактировать под себя — переопределения в ~/.claude/furca/profile.md
 language: en              # язык разговора с владельцем и документов проекта; канон системы — английский
 session_model_recommended: fable
-agent_models: {}          # переопределения моделей субагентов; пусто = как в agents/forge-*.md
+agent_models: {}          # переопределения моделей субагентов; пусто = как в agents/*.md
 converge_limit: 3
 autocompact_window: 400000  # рекомендуемый порог автокомпакта сессии в токенах; 0 = не проверять
 test_platform: local
