@@ -33,10 +33,10 @@ PROJECT="$1"
 [[ -d "$PROJECT" ]] || { echo "FAIL: каталог проекта не найден: $PROJECT"; exit 1; }
 PROJECT="$(cd "$PROJECT" && pwd)"
 
-FORGE_DIR="$PROJECT/docs/furca"
-SPEC="$FORGE_DIR/spec.md"
-PLAN="$FORGE_DIR/plan.md"
-BLOCKS_DIR="$FORGE_DIR/blocks"
+FURCA_DIR="$PROJECT/docs/furca"
+SPEC="$FURCA_DIR/spec.md"
+PLAN="$FURCA_DIR/plan.md"
+BLOCKS_DIR="$FURCA_DIR/blocks"
 TASKS="$PROJECT/tasks.md"
 
 fail() { echo "FAIL: [$PROJECT] $1"; exit 1; }

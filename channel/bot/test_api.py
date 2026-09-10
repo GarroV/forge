@@ -23,7 +23,7 @@ import core
 import db
 import main
 
-DSN = os.environ.get("FORGE_TEST_DSN", "postgresql:///forge_channel_test")
+DSN = os.environ.get("FURCA_TEST_DSN", "postgresql:///forge_channel_test")
 SECRET = "test-secret"
 OWNER = "777"
 AUTH = {"Authorization": "Bearer " + SECRET}

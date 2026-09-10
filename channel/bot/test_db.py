@@ -18,7 +18,7 @@ import asyncpg
 
 import db
 
-DSN = os.environ.get("FORGE_TEST_DSN", "postgresql:///forge_channel_test")
+DSN = os.environ.get("FURCA_TEST_DSN", "postgresql:///forge_channel_test")
 
 # Схема канала до появления адресации — то, что прямо сейчас крутится на
 # площадке владельца. Нужна дословно: миграция обязана переварить именно её.

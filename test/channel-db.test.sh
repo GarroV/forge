@@ -11,12 +11,12 @@ set -euo pipefail
 # принимают решение «адресация работает», не проверив её ни разу.
 #
 # Переменные:
-#   FORGE_TEST_PYTHON — интерпретатор с asyncpg (по умолчанию python3)
-#   FORGE_TEST_DB     — имя временной базы (по умолчанию forge_channel_test)
+#   FURCA_TEST_PYTHON — интерпретатор с asyncpg (по умолчанию python3)
+#   FURCA_TEST_DB     — имя временной базы (по умолчанию forge_channel_test)
 FURCA_HOME="$(cd "$(dirname "$0")/.." && pwd)"
 BOT_DIR="${1:-$FURCA_HOME/channel/bot}"
-PYTHON="${FORGE_TEST_PYTHON:-python3}"
-DB_NAME="${FORGE_TEST_DB:-forge_channel_test}"
+PYTHON="${FURCA_TEST_PYTHON:-python3}"
+DB_NAME="${FURCA_TEST_DB:-forge_channel_test}"
 
 [[ -d "$BOT_DIR" ]] || { echo "FAIL: каталог бота не найден: $BOT_DIR"; exit 1; }
 for f in db.py test_db.py test_api.py; do
@@ -27,9 +27,9 @@ if ! "$PYTHON" -c 'import asyncpg, aiohttp, aiogram' >/dev/null 2>&1; then
   cat >&2 <<'MSG'
 FAIL: у интерпретатора нет зависимостей канала — тесты базы гонять нечем.
 
-  python3 -m venv /tmp/forge-channel-venv
-  /tmp/forge-channel-venv/bin/pip install asyncpg aiohttp aiogram
-  FORGE_TEST_PYTHON=/tmp/forge-channel-venv/bin/python bash test/channel-db.test.sh
+  python3 -m venv /tmp/furca-channel-venv
+  /tmp/furca-channel-venv/bin/pip install asyncpg aiohttp aiogram
+  FURCA_TEST_PYTHON=/tmp/furca-channel-venv/bin/python bash test/channel-db.test.sh
 MSG
   exit 1
 fi
@@ -46,7 +46,7 @@ trap cleanup EXIT
 
 # Вывод в переменную, а не в конвейер: код возврата конвейера — код последней
 # команды, и «PASS» печаталось бы поверх упавших тестов.
-if ! output="$( cd "$BOT_DIR" && FORGE_TEST_DSN="postgresql:///$DB_NAME" "$PYTHON" -m unittest -q test_db test_api 2>&1 )"; then
+if ! output="$( cd "$BOT_DIR" && FURCA_TEST_DSN="postgresql:///$DB_NAME" "$PYTHON" -m unittest -q test_db test_api 2>&1 )"; then
   echo "$output" | tail -30
   echo "FAIL: тесты базы канала упали"
   exit 1

@@ -129,7 +129,7 @@ for t in test/*.test.sh; do bash "$t"; done
 ```
 python3 -m venv /tmp/furca-channel-venv
 /tmp/furca-channel-venv/bin/pip install asyncpg aiohttp aiogram
-FORGE_TEST_PYTHON=/tmp/furca-channel-venv/bin/python bash test/channel-db.test.sh
+FURCA_TEST_PYTHON=/tmp/furca-channel-venv/bin/python bash test/channel-db.test.sh
 ```
 
 ## Как вести проект

@@ -45,7 +45,7 @@ print(json.dumps({'session_id': sys.argv[1], 'cwd': sys.argv[2],
                   'last_assistant_message': 'беру следующую волну',
                   'background_tasks': json.loads(sys.argv[3])}))" "$sid" "$dir" "$bg")"
   set +e
-  HOOK_STDERR="$(printf '%s' "$payload" | FORGE_HOOK_TRACE=1 python3 "$HOOK" 2>&1 >/dev/null)"
+  HOOK_STDERR="$(printf '%s' "$payload" | FURCA_HOOK_TRACE=1 python3 "$HOOK" 2>&1 >/dev/null)"
   HOOK_CODE=$?
   set -e
 }
@@ -206,7 +206,7 @@ echo 'не json' | python3 "$HOOK" > /dev/null 2>&1; broken=$?
 printf '' | python3 "$HOOK" > /dev/null 2>&1; empty=$?
 set -e
 (( broken == 0 )) || { echo "FAIL: битый payload дал код $broken вместо 0"; exit 1; }
-broken_reason="$(echo 'не json' | FORGE_HOOK_TRACE=1 python3 "$HOOK" 2>&1 >/dev/null)"
+broken_reason="$(echo 'не json' | FURCA_HOOK_TRACE=1 python3 "$HOOK" 2>&1 >/dev/null)"
 grep -q "сбой сторожа" <<<"$broken_reason" || { echo "FAIL: на битом payload сторож не назвал сбой сбоем: $broken_reason"; exit 1; }
 (( empty == 0 )) || { echo "FAIL: пустой stdin дал код $empty вместо 0"; exit 1; }
 
