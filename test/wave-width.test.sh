@@ -50,7 +50,7 @@ print(json.dumps({'session_id':'s1','cwd':sys.argv[1],'hook_event_name':'PreTool
 reset_wave() {
   python3 - "$HOME" <<'RESET'
 import json, os, sys, glob
-for f in glob.glob(os.path.join(sys.argv[1], ".claude", "forge", "builds", "*.json")):
+for f in glob.glob(os.path.join(sys.argv[1], ".claude", "furca", "builds", "*.json")):
     d = json.load(open(f))
     d["wave_launches"] = []
     json.dump(d, open(f, "w"))
@@ -118,7 +118,7 @@ echo "ширина волны: волна кончилась — счёт зан
 python3 - "$HOME" <<'AGE'
 import json, os, sys, glob, time
 # Состаренные запуски: волна, начатая полчаса назад, давно кончилась.
-for f in glob.glob(os.path.join(sys.argv[1], ".claude", "forge", "builds", "*.json")):
+for f in glob.glob(os.path.join(sys.argv[1], ".claude", "furca", "builds", "*.json")):
     d = json.load(open(f))
     d["wave_launches"] = [time.time() - 1800]
     json.dump(d, open(f, "w"))

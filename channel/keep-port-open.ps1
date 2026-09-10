@@ -22,7 +22,7 @@
 $ErrorActionPreference = 'Continue'
 
 $port = 8090
-$ruleName = "Forge Channel Docker $port"
+$ruleName = "FURCA Channel Docker $port"
 $log = Join-Path $PSScriptRoot 'keep-port-open.log'   # рядом со скриптом, без привязки к пути
 
 function Log($m) {

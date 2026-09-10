@@ -148,11 +148,11 @@ curl -s http://<адрес>:8090/healthz          # ожидание: {"status":
 # 2. Отправка — сообщение должно прийти в Telegram
 curl -s -X POST http://<адрес>:8090/notify \
   -H "Authorization: Bearer $FURCA_SECRET" -H 'content-type: application/json' \
-  -d '{"project":"forge","kind":"block","text":"проверка канала"}'
+  -d '{"project":"furca","kind":"block","text":"проверка канала"}'
 
 # 3. Приём — ответить боту в Telegram РЕПЛАЕМ на сообщение из шага 2, затем
-curl -s "http://<адрес>:8090/inbox?project=forge" -H "Authorization: Bearer $FURCA_SECRET"
-#    ожидание: ответ на месте, поле "project" равно "forge"
+curl -s "http://<адрес>:8090/inbox?project=furca" -H "Authorization: Bearer $FURCA_SECRET"
+#    ожидание: ответ на месте, поле "project" равно "furca"
 
 # 4. Адресация — чужой проект этот ответ видеть не должен
 curl -s "http://<адрес>:8090/inbox?project=someone-else" -H "Authorization: Bearer $FURCA_SECRET"
