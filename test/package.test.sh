@@ -13,13 +13,13 @@
 set -euo pipefail
 shopt -s nullglob
 
-FORGE_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+FURCA_HOME="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Без аргумента прогоняются фикстуры — так же, как у проверки целостности: у самого
 # репозитория системы пакета документов нет, он не FURCA-проект.
 if [[ $# -eq 0 ]]; then
   found=0
-  for dir in "$FORGE_HOME"/test/fixtures/*/; do
+  for dir in "$FURCA_HOME"/test/fixtures/*/; do
     [[ -f "${dir}docs/furca/spec.md" ]] || continue
     found=1
     bash "$0" "${dir%/}"

@@ -11,8 +11,8 @@ set -uo pipefail
 # нет, транскрипт испорчен. Лишнее удержание стоит хода модели с полным
 # контекстом, то есть настоящих денег.
 
-FORGE_HOME="$(cd "$(dirname "$0")/.." && pwd)"
-KEEP="$FORGE_HOME/hooks/keep-building.py"
+FURCA_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+KEEP="$FURCA_HOME/hooks/keep-building.py"
 export HOME="$(mktemp -d)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$HOME" "$WORK"' EXIT

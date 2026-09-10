@@ -2,10 +2,10 @@
 set -euo pipefail
 shopt -s nullglob
 
-FORGE_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+FURCA_HOME="$(cd "$(dirname "$0")/.." && pwd)"
 # По умолчанию проверяются реальные скиллы репо; аргумент — каталог с копией
 # (используется негативными прогонами на испорченных копиях).
-SKILLS_DIR="${1:-$FORGE_HOME/skills}"
+SKILLS_DIR="${1:-$FURCA_HOME/skills}"
 MAX_DESCRIPTION=1024
 
 fail() { echo "FAIL: $1"; exit 1; }
@@ -38,7 +38,7 @@ for dir in "$SKILLS_DIR"/*/; do
   # скилл продолжает ссылаться на старое имя и ломается только в бою.
   while IFS= read -r ref; do
     [[ -z "$ref" ]] && continue
-    target="$FORGE_HOME/$ref"
+    target="$FURCA_HOME/$ref"
     if [[ "$ref" == */ ]]; then
       [[ -d "$target" ]] || fail "[$name] ссылается на несуществующий каталог: $ref"
     else
@@ -139,7 +139,7 @@ done
 # Файл baseline попадает в этот же список: AITriage записывает в него абсолютный
 # путь до файла с находкой, а репозиторий общий — путь и утечёт, и не сработает на
 # чужой машине. Сопоставление идёт по хешу, поэтому относительный путь безопасен.
-for scope in "$SKILLS_DIR" "$FORGE_HOME/templates" "$FORGE_HOME/channel" "$FORGE_HOME/agents" "$FORGE_HOME/.aitriage-baseline.json"; do
+for scope in "$SKILLS_DIR" "$FURCA_HOME/templates" "$FURCA_HOME/channel" "$FURCA_HOME/agents" "$FURCA_HOME/.aitriage-baseline.json"; do
   [[ -e "$scope" ]] || continue
 
   hardcoded_repo="$(grep -rnE -- '--repo[= ]+[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+' "$scope" || true)"
@@ -169,9 +169,9 @@ for scope in "$SKILLS_DIR" "$FORGE_HOME/templates" "$FORGE_HOME/channel" "$FORGE
   # Имена личной инфраструктуры владельца (его серверов, сетей, соседних
   # проектов) в ядре недопустимы, но перечислять их в самом ядре нельзя — они бы
   # тогда в нём и оказались. Поэтому список лежит у владельца:
-  # ~/.claude/forge/private-names.txt, по одному слову в строке, регистр не важен.
+  # ~/.claude/furca/private-names.txt, по одному слову в строке, регистр не важен.
   # Нет файла — проверка пропускается с явной строкой, а не молча.
-  private_names="${FORGE_PRIVATE_NAMES:-$HOME/.claude/forge/private-names.txt}"
+  private_names="${FURCA_PRIVATE_NAMES:-$HOME/.claude/furca/private-names.txt}"
   if [[ -f "$private_names" ]]; then
     while IFS= read -r name; do
       name="$(echo "$name" | sed 's/#.*//' | xargs || true)"
@@ -194,9 +194,9 @@ done
 # называть адрес клонирования и `~/.claude/...`. Повод: ревизия 26.08.2026 нашла
 # в docs/ имя домашнего сервера, а в замере по тестам — имена шестнадцати личных и
 # рабочих репозиториев вместе с их состоянием.
-private_names="${FORGE_PRIVATE_NAMES:-$HOME/.claude/forge/private-names.txt}"
+private_names="${FURCA_PRIVATE_NAMES:-$HOME/.claude/furca/private-names.txt}"
 if [[ -f "$private_names" ]]; then
-  for scope in "$FORGE_HOME/docs" "$FORGE_HOME/README.md"; do
+  for scope in "$FURCA_HOME/docs" "$FURCA_HOME/README.md"; do
     [[ -e "$scope" ]] || continue
     while IFS= read -r name; do
       name="$(echo "$name" | sed 's/#.*//' | xargs || true)"

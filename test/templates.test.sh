@@ -2,10 +2,10 @@
 set -euo pipefail
 shopt -s nullglob
 
-FORGE_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+FURCA_HOME="$(cd "$(dirname "$0")/.." && pwd)"
 # По умолчанию проверяются реальные шаблоны репо; аргумент — каталог с копией
 # (используется экспериментами с испорченными копиями, см. mktemp в отчёте).
-TEMPLATES_DIR="${1:-$FORGE_HOME/templates}"
+TEMPLATES_DIR="${1:-$FURCA_HOME/templates}"
 MAX_LINES=100
 
 check_lines() {
@@ -349,11 +349,11 @@ done
 # (именно репозитория: TEMPLATES_DIR может быть испорченной копией из теста).
 # Примеров два — «есть только идея» и «уже работающий продукт»: правила ветвления
 # секции 0 иначе ничем не проверены.
-for fx in "$FORGE_HOME/test/fixtures/toy-project/intake.md" \
-          "$FORGE_HOME/test/fixtures/intake-brownfield.md"; do
+for fx in "$FURCA_HOME/test/fixtures/toy-project/intake.md" \
+          "$FURCA_HOME/test/fixtures/intake-brownfield.md"; do
   [[ -f "$fx" ]] || { echo "FAIL: не найден заполненный пример анкеты: $fx"; exit 1; }
   missing="$(comm -23 \
-    <(grep -E '^#{2,3} ' "$FORGE_HOME/templates/intake.md" | sort) \
+    <(grep -E '^#{2,3} ' "$FURCA_HOME/templates/intake.md" | sort) \
     <(grep -E '^#{2,3} ' "$fx" | sort))"
   [[ -z "$missing" ]] || {
     echo "FAIL: пример анкеты отстал от шаблона ($(basename "$fx")) — нет секций:"

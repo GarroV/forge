@@ -13,8 +13,8 @@ set -euo pipefail
 # Переменные:
 #   FORGE_TEST_PYTHON — интерпретатор с asyncpg (по умолчанию python3)
 #   FORGE_TEST_DB     — имя временной базы (по умолчанию forge_channel_test)
-FORGE_HOME="$(cd "$(dirname "$0")/.." && pwd)"
-BOT_DIR="${1:-$FORGE_HOME/channel/bot}"
+FURCA_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+BOT_DIR="${1:-$FURCA_HOME/channel/bot}"
 PYTHON="${FORGE_TEST_PYTHON:-python3}"
 DB_NAME="${FORGE_TEST_DB:-forge_channel_test}"
 

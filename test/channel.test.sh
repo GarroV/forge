@@ -4,8 +4,8 @@ set -euo pipefail
 # Тесты чистой логики канала. Гоняются без Docker и без сети: всё, что требует
 # aiogram/asyncpg, живёт в других модулях и в core.py не импортируется намеренно —
 # тогда решения о доступе проверяются без поднятого стека.
-FORGE_HOME="$(cd "$(dirname "$0")/.." && pwd)"
-BOT_DIR="${1:-$FORGE_HOME/channel/bot}"
+FURCA_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+BOT_DIR="${1:-$FURCA_HOME/channel/bot}"
 
 [[ -d "$BOT_DIR" ]] || { echo "FAIL: каталог бота не найден: $BOT_DIR"; exit 1; }
 for f in core.py test_core.py; do

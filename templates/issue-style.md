@@ -50,7 +50,7 @@ help.
    projects, other people's repositories. A run is named neutrally ("the pilot
    project"), machines by role ("the home server", "the working machine"). The list
    of forbidden names is the same one used for the core-purity check:
-   `~/.claude/forge/private-names.txt`.
+   `~/.claude/furca/private-names.txt`.
 3. **Personal data and descriptions of what it consists of.** "a file with personal
    data" is enough to state an issue; listing which fields and about how many people
    is not needed.

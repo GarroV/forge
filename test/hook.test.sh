@@ -7,8 +7,8 @@ shopt -s nullglob
 # сторону дорогая — не держит вовсе (стройка стоит до владельца, ради чего сторож
 # и заведён) или держит всегда (сессия крутится вхолостую и жжёт лимит).
 
-FORGE_HOME="$(cd "$(dirname "$0")/.." && pwd)"
-HOOK="$FORGE_HOME/hooks/keep-building.py"
+FURCA_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+HOOK="$FURCA_HOME/hooks/keep-building.py"
 export HOME="$(mktemp -d)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$HOME" "$WORK"' EXIT

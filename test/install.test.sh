@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 shopt -s nullglob
-FORGE_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+FURCA_HOME="$(cd "$(dirname "$0")/.." && pwd)"
 export HOME="$(mktemp -d)"
 trap 'rm -rf "$HOME"' EXIT
-"$FORGE_HOME/install.sh" > /dev/null
+"$FURCA_HOME/install.sh" > /dev/null
 [[ -f "$HOME/.claude/furca/profile.md" ]] || { echo "FAIL: no profile"; exit 1; }
-grep -q "forge_home: $FORGE_HOME" "$HOME/.claude/furca/profile.md" || { echo "FAIL: forge_home not substituted"; exit 1; }
+grep -q "forge_home: $FURCA_HOME" "$HOME/.claude/furca/profile.md" || { echo "FAIL: forge_home not substituted"; exit 1; }
 echo "custom-marker" >> "$HOME/.claude/furca/profile.md"
-"$FORGE_HOME/install.sh" > /dev/null
+"$FURCA_HOME/install.sh" > /dev/null
 grep -q "custom-marker" "$HOME/.claude/furca/profile.md" || { echo "FAIL: profile overwritten"; exit 1; }
 
 # Перенос старого профиля: на диске мог уже лежать ~/.claude/forge/profile.md с
@@ -22,7 +22,7 @@ mkdir -p "$MIGRATE_HOME/.claude/forge"
 printf '%s\n' "---" "forge_home: /old/path" "language: ru" "---" "old-owner-marker" \
   > "$MIGRATE_HOME/.claude/forge/profile.md"
 echo "не трогать" > "$MIGRATE_HOME/.claude/forge/channel.env"
-HOME="$MIGRATE_HOME" "$FORGE_HOME/install.sh" > /dev/null
+HOME="$MIGRATE_HOME" "$FURCA_HOME/install.sh" > /dev/null
 grep -q "old-owner-marker" "$MIGRATE_HOME/.claude/furca/profile.md" 2>/dev/null || {
   echo "FAIL: старый профиль не перенёсся в ~/.claude/furca/"; exit 1;
 }
@@ -33,7 +33,7 @@ grep -q "old-owner-marker" "$MIGRATE_HOME/.claude/furca/profile.md" 2>/dev/null 
   echo "FAIL: channel.env пропал — его перенос не в этой задаче"; exit 1;
 }
 [[ ! -L "$HOME/.claude/skills/forge-*" ]] || { echo "FAIL: literal glob symlink created"; exit 1; }
-for s in "$FORGE_HOME"/skills/*/; do
+for s in "$FURCA_HOME"/skills/*/; do
   name="$(basename "$s")"
   [[ "$(readlink "$HOME/.claude/skills/$name")" == "${s%/}" ]] || { echo "FAIL: symlink $name"; exit 1; }
 done
@@ -41,7 +41,7 @@ done
 # агентов, которых в реестре нет, и запуск блока падает «agent type not found».
 [[ ! -L "$HOME/.claude/agents/forge-*.md" ]] || { echo "FAIL: literal glob symlink created (agents)"; exit 1; }
 agents_found=0
-for a in "$FORGE_HOME"/agents/*.md; do
+for a in "$FURCA_HOME"/agents/*.md; do
   name="$(basename "$a")"
   [[ "$(readlink "$HOME/.claude/agents/$name")" == "$a" ]] || { echo "FAIL: agent symlink $name"; exit 1; }
   agents_found=1
@@ -52,35 +52,35 @@ done
 # (docs/naming.md) снимает этот префикс со всех скиллов и агентов по одному, и
 # после первого же переименования каталог перестаёт называться forge-* — глоб,
 # завязанный на префикс, молча перестаёт его находить.
-mkdir -p "$FORGE_HOME/skills/zzz-demo"
-touch "$FORGE_HOME/agents/zzz-demo-agent.md"
-trap 'rm -rf "$HOME" "$FORGE_HOME/skills/zzz-demo" "$FORGE_HOME/agents/zzz-demo-agent.md"' EXIT
-"$FORGE_HOME/install.sh" > /dev/null
-[[ "$(readlink "$HOME/.claude/skills/zzz-demo")" == "$FORGE_HOME/skills/zzz-demo" ]] || { echo "FAIL: дискавери скиллов зависит от префикса forge-"; exit 1; }
-[[ "$(readlink "$HOME/.claude/agents/zzz-demo-agent.md")" == "$FORGE_HOME/agents/zzz-demo-agent.md" ]] || { echo "FAIL: дискавери агентов зависит от префикса forge-"; exit 1; }
-rm -rf "$FORGE_HOME/skills/zzz-demo" "$FORGE_HOME/agents/zzz-demo-agent.md"
+mkdir -p "$FURCA_HOME/skills/zzz-demo"
+touch "$FURCA_HOME/agents/zzz-demo-agent.md"
+trap 'rm -rf "$HOME" "$FURCA_HOME/skills/zzz-demo" "$FURCA_HOME/agents/zzz-demo-agent.md"' EXIT
+"$FURCA_HOME/install.sh" > /dev/null
+[[ "$(readlink "$HOME/.claude/skills/zzz-demo")" == "$FURCA_HOME/skills/zzz-demo" ]] || { echo "FAIL: дискавери скиллов зависит от префикса forge-"; exit 1; }
+[[ "$(readlink "$HOME/.claude/agents/zzz-demo-agent.md")" == "$FURCA_HOME/agents/zzz-demo-agent.md" ]] || { echo "FAIL: дискавери агентов зависит от префикса forge-"; exit 1; }
+rm -rf "$FURCA_HOME/skills/zzz-demo" "$FURCA_HOME/agents/zzz-demo-agent.md"
 
 # Протухший симлинк на переименованный или удалённый скилл/агент установщик
 # обязан снять сам — иначе после переименования модель видит рядом старое
 # (битое) и новое имя и путается, каким из них пользоваться.
 ln -sfn "/nonexistent-skill-path" "$HOME/.claude/skills/forge-stale"
 ln -sfn "/nonexistent-agent-path.md" "$HOME/.claude/agents/forge-stale.md"
-"$FORGE_HOME/install.sh" > /dev/null
+"$FURCA_HOME/install.sh" > /dev/null
 [[ ! -e "$HOME/.claude/skills/forge-stale" ]] || { echo "FAIL: протухший симлинк скилла не снят"; exit 1; }
 [[ ! -e "$HOME/.claude/agents/forge-stale.md" ]] || { echo "FAIL: протухший симлинк агента не снят"; exit 1; }
 
-# Чужой симлинк (не наш — цель не под $FORGE_HOME) уборка не трогает, даже если
+# Чужой симлинк (не наш — цель не под $FURCA_HOME) уборка не трогает, даже если
 # он битый: ~/.claude/skills — общий плоский реестр с другими наборами (ecc,
 # vercel, superpowers), и наша уборка не вправе решать за них.
 ln -sfn "/completely/foreign/broken/target" "$HOME/.claude/skills/foreign-skill"
-"$FORGE_HOME/install.sh" > /dev/null
+"$FURCA_HOME/install.sh" > /dev/null
 [[ -L "$HOME/.claude/skills/foreign-skill" ]] || { echo "FAIL: уборка сняла чужой симлинк"; exit 1; }
 rm -f "$HOME/.claude/skills/foreign-skill"
 # Предупреждение — часть установки, а не любезность: в уже открытой сессии реестр
 # агентов обновляется с задержкой, и первый запуск после установки может упасть
 # «agent type not found». Проверяются оба совета, потому что порознь они врут:
 # только «повтори» оставит человека в цикле, только «перезапусти» погонит его зря.
-install_out="$("$FORGE_HOME/install.sh")"
+install_out="$("$FURCA_HOME/install.sh")"
 grep -q "задержкой" <<<"$install_out" || { echo "FAIL: no delay warning"; exit 1; }
 grep -q "перезапусти" <<<"$install_out" || { echo "FAIL: no restart fallback"; exit 1; }
 
@@ -89,7 +89,7 @@ grep -q "перезапусти" <<<"$install_out" || { echo "FAIL: no restart f
 # файла, а именно запись, по которой хук будет вызван.
 SETTINGS="$HOME/.claude/settings.json"
 [[ -f "$SETTINGS" ]] || { echo "FAIL: settings.json не создан"; exit 1; }
-python3 - "$SETTINGS" "$FORGE_HOME" <<'CHECK' || exit 1
+python3 - "$SETTINGS" "$FURCA_HOME" <<'CHECK' || exit 1
 import json, sys
 settings = json.loads(open(sys.argv[1]).read())
 forge_home = sys.argv[2]
@@ -163,13 +163,13 @@ settings.setdefault("hooks", {}).setdefault("PreToolUse", []).append(
 settings["ownKey"] = "не трогать"
 json.dump(settings, open(p, "w"), ensure_ascii=False, indent=2)
 SEED
-"$FORGE_HOME/install.sh" > /dev/null
+"$FURCA_HOME/install.sh" > /dev/null
 grep -q "чужой-хук-владельца" "$SETTINGS" || { echo "FAIL: установщик снёс чужой хук"; exit 1; }
 grep -q "не трогать" "$SETTINGS" || { echo "FAIL: установщик снёс чужие настройки"; exit 1; }
 
 # Повторная установка не плодит второго сторожа: два одинаковых хука на Stop
 # означают два удержания на каждый ход и вдвое больший расход.
-"$FORGE_HOME/install.sh" > /dev/null
+"$FURCA_HOME/install.sh" > /dev/null
 count="$(python3 -c "
 import json,sys
 s=json.load(open(sys.argv[1]))
@@ -189,7 +189,7 @@ for g in s["hooks"]["Stop"]:
             h["command"] = "python3 /старый/путь/hooks/keep-building.py"
 json.dump(s, open(p, "w"), ensure_ascii=False, indent=2)
 MOVE
-"$FORGE_HOME/install.sh" > /dev/null
+"$FURCA_HOME/install.sh" > /dev/null
 grep -q "/старый/путь/" "$SETTINGS" && { echo "FAIL: старый путь сторожа не обновлён"; exit 1; }
 count="$(python3 -c "
 import json,sys
@@ -202,14 +202,14 @@ print(sum('keep-building.py' in h.get('command','') for g in s.get('hooks',{}).g
 # об этом вслух. Молчаливая перезапись стоила бы владельцу всех его настроек.
 cp "$SETTINGS" "$SETTINGS.good"
 echo '{ это не json' > "$SETTINGS"
-broken_out="$("$FORGE_HOME/install.sh")"
+broken_out="$("$FURCA_HOME/install.sh")"
 grep -q "не читается как JSON" <<<"$broken_out" || { echo "FAIL: об испорченном settings.json не сказано"; exit 1; }
 grep -q "это не json" "$SETTINGS" || { echo "FAIL: испорченный settings.json перезаписан установщиком"; exit 1; }
 mv "$SETTINGS.good" "$SETTINGS"
 
 # Про снимок хуков на старте сессии владельцу говорится прямо: иначе он поставит
 # систему, продолжит в открытом окне и решит, что сторож не работает.
-hook_out="$("$FORGE_HOME/install.sh")"
+hook_out="$("$FURCA_HOME/install.sh")"
 grep -q "перезапуска" <<<"$hook_out" || { echo "FAIL: не сказано, что сторож включится после перезапуска"; exit 1; }
 
 echo "PASS"
@@ -217,7 +217,7 @@ echo "PASS"
 # --off обязан снимать оба механизма стройки. Снятый наполовину хуже любого
 # целого состояния: владелец считает, что выключил стройку, а её правила
 # продолжают вмешиваться в его собственную работу.
-python3 "$FORGE_HOME/hooks/keep-building.py" --off > /dev/null
+python3 "$FURCA_HOME/hooks/keep-building.py" --off > /dev/null
 python3 - "$SETTINGS" <<'OFFCHECK' || exit 1
 import json, sys
 s = json.loads(open(sys.argv[1]).read())

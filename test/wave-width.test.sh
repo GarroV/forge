@@ -11,9 +11,9 @@ set -uo pipefail
 # останавливает стройку целиком. Поэтому вмешательство только вблизи лимита, и
 # сначала словом, а не отказом.
 
-FORGE_HOME="$(cd "$(dirname "$0")/.." && pwd)"
-GUARD="$FORGE_HOME/hooks/guard-wave-width.py"
-KEEP="$FORGE_HOME/hooks/keep-building.py"
+FURCA_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+GUARD="$FURCA_HOME/hooks/guard-wave-width.py"
+KEEP="$FURCA_HOME/hooks/keep-building.py"
 export HOME="$(mktemp -d)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$HOME" "$WORK"' EXIT

@@ -2,7 +2,7 @@
 set -euo pipefail
 shopt -s nullglob
 
-FORGE_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+FURCA_HOME="$(cd "$(dirname "$0")/.." && pwd)"
 
 id_in_list() {
   # $1 = искомый id, $2 = список id (по одному на строку)
@@ -311,7 +311,7 @@ fi
 
 # Без аргумента — проверяем ВСЕ фикстуры в test/fixtures/*/.
 found=0
-for dir in "$FORGE_HOME"/test/fixtures/*/; do
+for dir in "$FURCA_HOME"/test/fixtures/*/; do
   found=1
   check_fixture "${dir%/}"
 done

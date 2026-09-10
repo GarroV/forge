@@ -10,9 +10,9 @@ set -uo pipefail
 # собственной сессии. Поэтому проверяется прежде всего молчание: вне стройки, на
 # мелком файле, на не-изображении и на любой поломке страж обязан пропускать.
 
-FORGE_HOME="$(cd "$(dirname "$0")/.." && pwd)"
-GUARD="$FORGE_HOME/hooks/guard-image-reads.py"
-KEEP="$FORGE_HOME/hooks/keep-building.py"
+FURCA_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+GUARD="$FURCA_HOME/hooks/guard-image-reads.py"
+KEEP="$FURCA_HOME/hooks/keep-building.py"
 export HOME="$(mktemp -d)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$HOME" "$WORK"' EXIT

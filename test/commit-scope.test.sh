@@ -10,9 +10,9 @@ set -uo pipefail
 # чужой коммит под чужим сообщением (issue #78); запретил лишнего — стройка
 # встаёт на ровном месте, потому что коммитить ей больше нечем.
 
-FORGE_HOME="$(cd "$(dirname "$0")/.." && pwd)"
-GUARD="$FORGE_HOME/hooks/guard-commit-scope.py"
-KEEP="$FORGE_HOME/hooks/keep-building.py"
+FURCA_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+GUARD="$FURCA_HOME/hooks/guard-commit-scope.py"
+KEEP="$FURCA_HOME/hooks/keep-building.py"
 export HOME="$(mktemp -d)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$HOME" "$WORK"' EXIT

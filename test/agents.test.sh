@@ -2,8 +2,8 @@
 set -euo pipefail
 shopt -s nullglob
 
-FORGE_HOME="$(cd "$(dirname "$0")/.." && pwd)"
-AGENTS_DIR="${1:-$FORGE_HOME/agents}"
+FURCA_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+AGENTS_DIR="${1:-$FURCA_HOME/agents}"
 ALLOWED_MODELS="fable opus sonnet haiku"
 
 fail() { echo "FAIL: $1"; exit 1; }
@@ -64,7 +64,7 @@ done
 # (docs/naming.md) снимает префикс forge- с агентов по одному, и регулярка,
 # завязанная на этот префикс, молча переставала бы видеть переименованных —
 # ровно так же, как install.sh до задачи 0 переставал их находить.
-python3 - "$FORGE_HOME" "${defined[*]}" <<'PYEOF' || exit 1
+python3 - "$FURCA_HOME" "${defined[*]}" <<'PYEOF' || exit 1
 import pathlib
 import re
 import sys

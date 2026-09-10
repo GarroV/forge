@@ -15,8 +15,8 @@
 set -euo pipefail
 shopt -s nullglob
 
-FORGE_HOME="$(cd "$(dirname "$0")/.." && pwd)"
-ROOT="${1:-$FORGE_HOME}"
+FURCA_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="${1:-$FURCA_HOME}"
 
 fail() { echo "FAIL: $1"; exit 1; }
 
